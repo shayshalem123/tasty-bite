@@ -13,33 +13,31 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+    primary = TastyBiteGreen,
+    secondary = TastyBiteLightGreen,
+    tertiary = TastyBiteDarkGreen
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF0E9D57),
-    secondary = Color(0xFF4CAF50),
-    tertiary = Color(0xFF2196F3)
-    // Add other colors as needed
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = TastyBiteGreen,
+    secondary = TastyBiteLightGreen,
+    tertiary = TastyBiteDarkGreen,
+    
+    // Other default colors
+    background = Color.White,
+    surface = Color.White,
     onPrimary = Color.White,
     onSecondary = Color.White,
     onTertiary = Color.White,
     onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    onSurface = Color(0xFF1C1B1F)
 )
 
 @Composable
 fun TastyBiteTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false, // Set to false to use our custom colors
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
