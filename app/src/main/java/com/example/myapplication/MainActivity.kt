@@ -22,9 +22,13 @@ import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -88,6 +92,20 @@ fun TastyBiteApp() {
 
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
+    // Add search state to track the search query
+    var searchQuery = remember { mutableStateOf("") }
+    // Create filtered recipes list based on search query
+    val filteredRecipes = remember(searchQuery.value) {
+        if (searchQuery.value.isEmpty()) {
+            emptyList()
+        } else {
+            recommendedRecipes.filter {
+                it.title.contains(searchQuery.value, ignoreCase = true) ||
+                it.author.contains(searchQuery.value, ignoreCase = true)
+            }
+        }
+    }
+    
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -96,17 +114,24 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         // Header
         HomeHeader()
         
-        // Search Bar
-        SearchBar()
+        // Search Bar - pass the search query state
+        SearchBar(searchQuery = searchQuery.value, onSearchQueryChange = { searchQuery.value = it })
         
-        // Categories
-        CategoriesSection()
-        
-        // Recommendations
-        RecommendationsSection()
-        
-        // Recipes of the Week
-        RecipesOfTheWeekSection()
+        // Conditionally show content based on search state
+        if (searchQuery.value.isNotEmpty()) {
+            // Show search results
+            SearchResultsSection(recipes = filteredRecipes)
+        } else {
+            // Show normal content when not searching
+            // Categories
+            CategoriesSection()
+            
+            // Recommendations
+            RecommendationsSection()
+            
+            // Recipes of the Week
+            RecipesOfTheWeekSection()
+        }
     }
 }
 
@@ -144,16 +169,28 @@ fun HomeHeader() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchBar() {
+fun SearchBar(searchQuery: String, onSearchQueryChange: (String) -> Unit) {
     OutlinedTextField(
-        value = "",
-        onValueChange = {},
+        value = searchQuery,
+        onValueChange = onSearchQueryChange,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
         placeholder = { Text("Search any recipes") },
         leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-        trailingIcon = { Icon(painterResource(id = R.drawable.ic_filter), contentDescription = "Filter") },
+        trailingIcon = { 
+            if (searchQuery.isNotEmpty()) {
+                IconButton(onClick = { onSearchQueryChange("") }) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Clear",
+                        modifier = Modifier.rotate(45f)
+                    )
+                }
+            } else {
+                Icon(painterResource(id = R.drawable.ic_filter), contentDescription = "Filter") 
+            }
+        },
         shape = RoundedCornerShape(12.dp),
         singleLine = true
     )
@@ -384,5 +421,88 @@ fun RecipesOfTheWeekSection() {
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         SectionHeader(title = "Recipes Of The Week")
         // Implementation similar to RecommendationsSection
+    }
+}
+
+@Composable
+fun SearchResultsSection(recipes: List<Recipe>) {
+    Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        Text(
+            text = "Search Results",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        if (recipes.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No recipes found",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                recipes.forEach { recipe ->
+                    SearchResultRecipeItem(recipe)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchResultRecipeItem(recipe: Recipe) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+        ) {
+            // Recipe image
+            Image(
+                painter = painterResource(id = recipe.imageUrl),
+                contentDescription = recipe.title,
+                modifier = Modifier
+                    .width(100.dp)
+                    .fillMaxHeight(),
+                contentScale = ContentScale.Crop
+            )
+            
+            // Recipe details
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = recipe.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = recipe.author,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Text(
+                    text = "Delicious recipe",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
