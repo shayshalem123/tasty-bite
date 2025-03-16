@@ -21,13 +21,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.models.Recipe
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 
 @Composable
-fun RecipeCard(recipe: Recipe) {
+fun RecipeCard(
+    recipe: Recipe,
+    onClick: () -> Unit = {}  // Default empty click handler
+) {
     Card(
         modifier = Modifier
             .width(200.dp)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable { onClick() },  // Add clickable modifier
         shape = RoundedCornerShape(16.dp)
     ) {
         Column {

@@ -14,9 +14,13 @@ import com.example.myapplication.ui.components.SearchBar
 import com.example.myapplication.ui.screens.home.components.CategoriesSection
 import com.example.myapplication.ui.screens.home.components.HomeHeader
 import com.example.myapplication.ui.screens.home.components.RecommendationsSection
+import com.example.myapplication.models.Recipe
 
 @Composable
-fun HomeScreen(modifier: Modifier = Modifier) {
+fun HomeScreen(
+    modifier: Modifier = Modifier,
+    onRecipeClick: (Recipe) -> Unit = {}
+) {
     // Search state
     var searchQuery = remember { mutableStateOf("") }
     
@@ -76,11 +80,16 @@ fun HomeScreen(modifier: Modifier = Modifier) {
                            "${selectedCategory.value?.name} Recipes" 
                         else 
                            "Search Results",
-                recipes = filteredRecipes
+                recipes = filteredRecipes,
+                onRecipeClick = onRecipeClick
             )
         } else {
             // Regular recommendations
-            RecommendationsSection(title = "Recommendation", recipes = recommendedRecipes)
+            RecommendationsSection(
+                title = "Recommendation", 
+                recipes = recommendedRecipes,
+                onRecipeClick = onRecipeClick
+            )
         }
     }
 } 
