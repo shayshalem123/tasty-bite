@@ -1,37 +1,72 @@
 package com.example.myapplication.ui
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.FloatingActionButtonDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.myapplication.auth.AuthState
+import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.data.recommendedRecipes
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.BottomNavigationBar
 import com.example.myapplication.ui.screens.add.AddRecipeScreen
+import com.example.myapplication.ui.screens.auth.LoginScreen
+import com.example.myapplication.ui.screens.auth.RegisterScreen
 import com.example.myapplication.ui.screens.detail.RecipeDetailScreen
 import com.example.myapplication.ui.screens.home.HomeScreen
 
 @Composable
-fun TastyBiteApp() {
+fun TastyBiteApp(authViewModel: AuthViewModel) {
+    // Get authState without collectAsState if it's causing issues
+    var authState by remember { mutableStateOf(authViewModel.authState.value) }
+    
+    // Update authState when it changes
+    LaunchedEffect(Unit) {
+        authViewModel.authState.collect { 
+            // This will update the authState
+            authState = it 
+        }
+    }
+    
+    // Authentication state management
+    var showLoginScreen by remember { mutableStateOf(true) }
+    
+    when (authState) {
+        is AuthState.Initial, is AuthState.Loading -> {
+            // Show loading state or splash screen
+            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        is AuthState.Authenticated -> {
+            // Show the main app content when authenticated
+            AuthenticatedContent(authViewModel)
+        }
+        is AuthState.Unauthenticated, is AuthState.Error -> {
+            // Show login or register screen
+            if (showLoginScreen) {
+                LoginScreen(
+                    authViewModel = authViewModel,
+                    onNavigateToRegister = { showLoginScreen = false }
+                )
+            } else {
+                RegisterScreen(
+                    authViewModel = authViewModel,
+                    onNavigateToLogin = { showLoginScreen = true }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AuthenticatedContent(authViewModel: AuthViewModel) {
     // State to track the selected recipe
     var selectedRecipe by remember { mutableStateOf<Recipe?>(null) }
     
@@ -63,40 +98,37 @@ fun TastyBiteApp() {
             // Show home screen
             else -> {
                 Scaffold(
-                    bottomBar = { BottomNavigationBar() },
-                    floatingActionButton = { },
+                    bottomBar = { 
+                        BottomNavigationBar(
+                            onLogoutClick = { authViewModel.signOut() }
+                        ) 
+                    },
+                    floatingActionButton = {
+                        FloatingActionButton(
+                            onClick = { isAddingRecipe = true },
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                            shape = CircleShape,
+                            elevation = FloatingActionButtonDefaults.elevation(
+                                defaultElevation = 4.dp,
+                                pressedElevation = 8.dp
+                            ),
+                            modifier = Modifier.size(56.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Recipe",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    },
                     floatingActionButtonPosition = FabPosition.Center
-                ) { padding ->
+                ) { paddingValues ->
                     HomeScreen(
-                        modifier = Modifier.padding(padding),
+                        modifier = Modifier.padding(paddingValues),
                         onRecipeClick = { recipe -> selectedRecipe = recipe },
                         recipes = allRecipes
                     )
-                }
-                
-                // Custom positioned FAB for adding new recipe
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .offset(y = (-28).dp)
-                ) {
-                    FloatingActionButton(
-                        onClick = { isAddingRecipe = true },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                        shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 4.dp,
-                            pressedElevation = 8.dp
-                        ),
-                        modifier = Modifier.size(56.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Add Recipe",
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
                 }
             }
         }
