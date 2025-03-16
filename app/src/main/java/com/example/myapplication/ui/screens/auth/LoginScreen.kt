@@ -96,13 +96,5 @@ fun LoginScreen(
         ) {
             Text("Don't have an account? Register")
         }
-        
-        // Demo credentials helper
-        Spacer(modifier = Modifier.height(32.dp))
-        Text(
-            text = "Demo credentials: test@example.com / password123",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 } 
