@@ -46,13 +46,7 @@ fun RecipeDetailScreen(
                     .padding(16.dp)
             ) {
                 // Recipe header with title, author, rating, stats
-                RecipeHeader(
-                    title = recipe.title,
-                    author = recipe.author,
-                    cookingTime = recipe.cookingTime ?: "10 mins",
-                    difficulty = recipe.difficulty ?: "Medium",
-                    calories = recipe.calories ?: "512 cal"
-                )
+                RecipeHeader(recipe = recipe)
                 
                 // Description
                 RecipeDescription(

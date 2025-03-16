@@ -19,17 +19,18 @@ import com.example.myapplication.models.Recipe
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    onRecipeClick: (Recipe) -> Unit = {}
+    onRecipeClick: (Recipe) -> Unit = {},
+    recipes: List<Recipe> = recommendedRecipes
 ) {
     // Search state
     var searchQuery = remember { mutableStateOf("") }
     
-    // Only keep category selection for filtering
+    // Category selection for filtering
     var selectedCategory = remember { mutableStateOf<Category?>(null) }
     
-    // Combined filtering logic - simplified to use only search and category
-    val filteredRecipes = remember(searchQuery.value, selectedCategory.value) {
-        recommendedRecipes
+    // Filtered recipes based on search and category
+    val filteredRecipes = remember(searchQuery.value, selectedCategory.value, recipes) {
+        recipes
             .filter { recipe ->
                 // Apply search filter
                 if (searchQuery.value.isNotEmpty()) {
@@ -87,7 +88,7 @@ fun HomeScreen(
             // Regular recommendations
             RecommendationsSection(
                 title = "Recommendation", 
-                recipes = recommendedRecipes,
+                recipes = recipes,
                 onRecipeClick = onRecipeClick
             )
         }
