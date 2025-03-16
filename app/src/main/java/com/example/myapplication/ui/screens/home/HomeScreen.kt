@@ -12,7 +12,6 @@ import com.example.myapplication.data.recommendedRecipes
 import com.example.myapplication.models.Category
 import com.example.myapplication.ui.components.SearchBar
 import com.example.myapplication.ui.screens.home.components.CategoriesSection
-import com.example.myapplication.ui.screens.home.components.FilteredResultsSection
 import com.example.myapplication.ui.screens.home.components.HomeHeader
 import com.example.myapplication.ui.screens.home.components.RecommendationsSection
 
@@ -54,7 +53,7 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         // Header
         HomeHeader()
         
-        // Search Bar - simplified without filter button
+        // Search Bar
         SearchBar(
             searchQuery = searchQuery.value, 
             onSearchQueryChange = { searchQuery.value = it }
@@ -69,14 +68,19 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             }
         )
         
-        // Show search results or filtered content
+        // Always use the Recommendations layout, but with different data based on filters
         if (searchQuery.value.isNotEmpty() || selectedCategory.value != null) {
-            // Show filtered results
-            FilteredResultsSection(recipes = filteredRecipes)
+            // Use same horizontal layout but with filtered recipes
+            RecommendationsSection(
+                title = if (selectedCategory.value != null) 
+                           "${selectedCategory.value?.name} Recipes" 
+                        else 
+                           "Search Results",
+                recipes = filteredRecipes
+            )
         } else {
-            // Show normal content when not filtering
-            // Recommendations
-            RecommendationsSection()
+            // Regular recommendations
+            RecommendationsSection(title = "Recommendation", recipes = recommendedRecipes)
         }
     }
 } 
