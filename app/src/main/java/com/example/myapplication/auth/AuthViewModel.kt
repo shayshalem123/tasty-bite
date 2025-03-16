@@ -9,11 +9,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class AuthViewModel : ViewModel() {
-    // Firebase Auth for login
+    // Firebase Auth for both login and registration
     private val firebaseAuth = FirebaseAuth.getInstance()
-    
-    // Mock service for registration
-    private val mockAuthService = MockAuthService()
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Initial)
     val authState: StateFlow<AuthState> = _authState
@@ -63,32 +60,35 @@ class AuthViewModel : ViewModel() {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             
-            // Use mock service for registration
-            mockAuthService.register(email, password)
-                .onSuccess { user ->
+            try {
+                // Use Firebase for registration
+                val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+                val user = result.user
+                
+                if (user != null) {
                     _currentUser.value = UserData(
-                        email = user.email,
-                        displayName = user.displayName
+                        email = user.email ?: "",
+                        displayName = user.displayName ?: user.email?.substringBefore("@") ?: ""
                     )
                     _authState.value = AuthState.Authenticated
+                } else {
+                    _authState.value = AuthState.Error("Failed to create user")
                 }
-                .onFailure { error ->
-                    _authState.value = AuthState.Error(error.message ?: "Registration failed")
-                }
+            } catch (e: Exception) {
+                _authState.value = AuthState.Error(e.message ?: "Registration failed")
+            }
         }
     }
     
     fun signOut() {
         // Sign out from Firebase
         firebaseAuth.signOut()
-        // Also sign out from mock service
-        mockAuthService.signOut()
         
         _currentUser.value = null
         _authState.value = AuthState.Unauthenticated
     }
     
-    // Common user data class that can be used with both Firebase and mock auth
+    // User data class for Firebase auth
     data class UserData(val email: String, val displayName: String)
 }
 
