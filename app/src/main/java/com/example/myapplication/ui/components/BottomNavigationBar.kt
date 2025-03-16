@@ -8,9 +8,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -24,7 +25,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Spacer
 
 @Composable
-fun BottomNavigationBar() {
+fun BottomNavigationBar(
+    onLogoutClick: () -> Unit = {}
+) {
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -66,19 +69,20 @@ fun BottomNavigationBar() {
                         }
                     }
                     
-                    Spacer(modifier = Modifier.weight(1f))
-                    
                     IconButton(
                         onClick = {},
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.Search, 
+                            imageVector = Icons.Default.Search, 
                             contentDescription = "Search",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
                     }
+                    
+                    // Center space for FAB
+                    Spacer(modifier = Modifier.weight(1f))
                     
                     IconButton(
                         onClick = {},
@@ -87,6 +91,19 @@ fun BottomNavigationBar() {
                         Icon(
                             imageVector = Icons.Outlined.Person, 
                             contentDescription = "Profile",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    
+                    // Logout button
+                    IconButton(
+                        onClick = onLogoutClick,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ExitToApp, 
+                            contentDescription = "Logout",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(24.dp)
                         )
