@@ -6,6 +6,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
@@ -46,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -54,6 +58,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import com.example.myapplication.data.categories
 import com.example.myapplication.data.recommendedRecipes
 import com.example.myapplication.models.Category
@@ -112,18 +117,32 @@ fun TastyBiteApp() {
 
 @Composable
 fun HomeScreen(modifier: Modifier = Modifier) {
-    // Add search state to track the search query
+    // Search state
     var searchQuery = remember { mutableStateOf("") }
-    // Create filtered recipes list based on search query
-    val filteredRecipes = remember(searchQuery.value) {
-        if (searchQuery.value.isEmpty()) {
-            emptyList()
-        } else {
-            recommendedRecipes.filter {
-                it.title.contains(searchQuery.value, ignoreCase = true) ||
-                it.author.contains(searchQuery.value, ignoreCase = true)
+    
+    // Only keep category selection for filtering
+    var selectedCategory = remember { mutableStateOf<Category?>(null) }
+    
+    // Combined filtering logic - simplified to use only search and category
+    val filteredRecipes = remember(searchQuery.value, selectedCategory.value) {
+        recommendedRecipes
+            .filter { recipe ->
+                // Apply search filter
+                if (searchQuery.value.isNotEmpty()) {
+                    (recipe.title.contains(searchQuery.value, ignoreCase = true) ||
+                    recipe.author.contains(searchQuery.value, ignoreCase = true))
+                } else {
+                    true
+                }
             }
-        }
+            .filter { recipe ->
+                // Apply category filter
+                if (selectedCategory.value != null) {
+                    recipe.categories?.contains(selectedCategory.value?.id) ?: false
+                } else {
+                    true
+                }
+            }
     }
     
     Column(
@@ -134,18 +153,27 @@ fun HomeScreen(modifier: Modifier = Modifier) {
         // Header
         HomeHeader()
         
-        // Search Bar - pass the search query state
-        SearchBar(searchQuery = searchQuery.value, onSearchQueryChange = { searchQuery.value = it })
+        // Search Bar - simplified without filter button
+        SearchBar(
+            searchQuery = searchQuery.value, 
+            onSearchQueryChange = { searchQuery.value = it }
+        )
         
-        // Conditionally show content based on search state
-        if (searchQuery.value.isNotEmpty()) {
-            // Show search results
-            SearchResultsSection(recipes = filteredRecipes)
+        // Categories with selection support
+        CategoriesSection(
+            selectedCategory = selectedCategory.value,
+            onCategorySelected = { category ->
+                // Toggle selection
+                selectedCategory.value = if (selectedCategory.value?.id == category.id) null else category
+            }
+        )
+        
+        // Show search results or filtered content
+        if (searchQuery.value.isNotEmpty() || selectedCategory.value != null) {
+            // Show filtered results
+            FilteredResultsSection(recipes = filteredRecipes)
         } else {
-            // Show normal content when not searching
-            // Categories
-            CategoriesSection()
-            
+            // Show normal content when not filtering
             // Recommendations
             RecommendationsSection()
         }
@@ -186,7 +214,10 @@ fun HomeHeader() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchBar(searchQuery: String, onSearchQueryChange: (String) -> Unit) {
+fun SearchBar(
+    searchQuery: String, 
+    onSearchQueryChange: (String) -> Unit
+) {
     OutlinedTextField(
         value = searchQuery,
         onValueChange = onSearchQueryChange,
@@ -204,8 +235,6 @@ fun SearchBar(searchQuery: String, onSearchQueryChange: (String) -> Unit) {
                         modifier = Modifier.rotate(45f)
                     )
                 }
-            } else {
-                Icon(painterResource(id = R.drawable.ic_filter), contentDescription = "Filter") 
             }
         },
         shape = RoundedCornerShape(12.dp),
@@ -214,7 +243,10 @@ fun SearchBar(searchQuery: String, onSearchQueryChange: (String) -> Unit) {
 }
 
 @Composable
-fun CategoriesSection() {
+fun CategoriesSection(
+    selectedCategory: Category? = null,
+    onCategorySelected: (Category) -> Unit
+) {
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         SectionHeader(title = "Categories")
         
@@ -223,7 +255,188 @@ fun CategoriesSection() {
             modifier = Modifier.padding(top = 8.dp)
         ) {
             items(categories) { category ->
-                CategoryItem(category)
+                CategoryItem(
+                    category = category,
+                    isSelected = selectedCategory?.id == category.id,
+                    onClick = { onCategorySelected(category) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun CategoryItem(
+    category: Category,
+    isSelected: Boolean = false,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Card(
+            modifier = Modifier
+                .size(64.dp)
+                .then(
+                    if (isSelected) 
+                        Modifier.border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(16.dp)
+                        )
+                    else 
+                        Modifier
+                ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Image(
+                painter = painterResource(id = category.icon),
+                contentDescription = category.name,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxSize(),
+                contentScale = ContentScale.Fit
+            )
+        }
+        Text(
+            text = category.name,
+            modifier = Modifier.padding(top = 8.dp),
+            fontSize = 12.sp,
+            color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+        )
+    }
+}
+
+@Composable
+fun RecommendationsSection() {
+    Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        SectionHeader(title = "Recommendation")
+        
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(top = 8.dp)
+        ) {
+            items(recommendedRecipes) { recipe ->
+                RecipeCard(recipe)
+            }
+        }
+    }
+}
+
+@Composable
+fun RecipeCard(recipe: Recipe) {
+    Card(
+        modifier = Modifier
+            .width(200.dp)
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column {
+            Image(
+                painter = painterResource(id = recipe.imageUrl),
+                contentDescription = recipe.title,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(120.dp),
+                contentScale = ContentScale.Crop
+            )
+            Column(modifier = Modifier.padding(12.dp)) {
+                Text(
+                    text = recipe.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = recipe.author,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun FilteredResultsSection(recipes: List<Recipe>) {
+    Column(modifier = Modifier.padding(vertical = 16.dp)) {
+        Text(
+            text = "Results",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        
+        if (recipes.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No recipes found",
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+        } else {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                recipes.forEach { recipe ->
+                    SearchResultRecipeItem(recipe)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SearchResultRecipeItem(recipe: Recipe) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(100.dp)
+        ) {
+            // Recipe image
+            Image(
+                painter = painterResource(id = recipe.imageUrl),
+                contentDescription = recipe.title,
+                modifier = Modifier
+                    .width(100.dp)
+                    .fillMaxHeight(),
+                contentScale = ContentScale.Crop
+            )
+            
+            // Recipe details
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = recipe.title,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = recipe.author,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Text(
+                    text = "Delicious recipe",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }
@@ -354,164 +567,5 @@ fun SectionHeader(title: String) {
             color = MaterialTheme.colorScheme.primary,
             fontSize = 14.sp
         )
-    }
-}
-
-@Composable
-fun CategoryItem(category: Category) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.padding(horizontal = 8.dp)
-    ) {
-        Card(
-            modifier = Modifier.size(64.dp),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Image(
-                painter = painterResource(id = category.icon),
-                contentDescription = category.name,
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxSize(),
-                contentScale = ContentScale.Fit
-            )
-        }
-        Text(
-            text = category.name,
-            modifier = Modifier.padding(top = 8.dp),
-            fontSize = 12.sp
-        )
-    }
-}
-
-@Composable
-fun RecommendationsSection() {
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        SectionHeader(title = "Recommendation")
-        
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.padding(top = 8.dp)
-        ) {
-            items(recommendedRecipes) { recipe ->
-                RecipeCard(recipe)
-            }
-        }
-    }
-}
-
-@Composable
-fun RecipeCard(recipe: Recipe) {
-    Card(
-        modifier = Modifier
-            .width(200.dp)
-            .padding(vertical = 8.dp),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column {
-            Image(
-                painter = painterResource(id = recipe.imageUrl),
-                contentDescription = recipe.title,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                contentScale = ContentScale.Crop
-            )
-            Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = recipe.title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = recipe.author,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun SearchResultsSection(recipes: List<Recipe>) {
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        Text(
-            text = "Search Results",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(vertical = 8.dp)
-        )
-        
-        if (recipes.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No recipes found",
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-            }
-        } else {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                recipes.forEach { recipe ->
-                    SearchResultRecipeItem(recipe)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun SearchResultRecipeItem(recipe: Recipe) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-        ) {
-            // Recipe image
-            Image(
-                painter = painterResource(id = recipe.imageUrl),
-                contentDescription = recipe.title,
-                modifier = Modifier
-                    .width(100.dp)
-                    .fillMaxHeight(),
-                contentScale = ContentScale.Crop
-            )
-            
-            // Recipe details
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .padding(12.dp),
-                verticalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = recipe.title,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = recipe.author,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
-                Text(
-                    text = "Delicious recipe",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
     }
 }
