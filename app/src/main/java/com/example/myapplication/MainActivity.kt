@@ -148,9 +148,6 @@ fun HomeScreen(modifier: Modifier = Modifier) {
             
             // Recommendations
             RecommendationsSection()
-            
-            // Recipes of the Week
-            RecipesOfTheWeekSection()
         }
     }
 }
@@ -433,14 +430,6 @@ fun RecipeCard(recipe: Recipe) {
                 )
             }
         }
-    }
-}
-
-@Composable
-fun RecipesOfTheWeekSection() {
-    Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        SectionHeader(title = "Recipes Of The Week")
-        // Implementation similar to RecommendationsSection
     }
 }
 
