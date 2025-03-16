@@ -21,6 +21,7 @@ fun IngredientsList(
 ) {
     var ingredientName by remember { mutableStateOf("") }
     var ingredientAmount by remember { mutableStateOf("") }
+    var selectedUnit by remember { mutableStateOf("g") } // Default unit
     
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -52,41 +53,49 @@ fun IngredientsList(
         }
         
         // Form to add new ingredient
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // Ingredient name
             OutlinedTextField(
                 value = ingredientName,
                 onValueChange = { ingredientName = it },
                 label = { Text("Ingredient") },
-                modifier = Modifier.weight(2f)
+                modifier = Modifier.fillMaxWidth()
             )
             
-            OutlinedTextField(
-                value = ingredientAmount,
-                onValueChange = { ingredientAmount = it },
-                label = { Text("Amount") },
-                modifier = Modifier.weight(1f)
+            // Amount and unit selection
+            IngredientAmountField(
+                amount = ingredientAmount,
+                onAmountChange = { ingredientAmount = it },
+                selectedUnit = selectedUnit,
+                onUnitChange = { selectedUnit = it },
+                modifier = Modifier.fillMaxWidth()
             )
             
+            // Add button
             Button(
                 onClick = {
                     if (ingredientName.isNotBlank() && ingredientAmount.isNotBlank()) {
+                        val formattedAmount = "$ingredientAmount $selectedUnit"
                         val newIngredient = Ingredient(
                             name = ingredientName,
-                            amount = ingredientAmount,
+                            amount = formattedAmount,
                             imageUrl = R.drawable.placeholder_image
                         )
                         onIngredientsChanged(ingredients + newIngredient)
                         ingredientName = ""
                         ingredientAmount = ""
+                        // Keep selected unit for convenience
                     }
                 },
-                enabled = ingredientName.isNotBlank() && ingredientAmount.isNotBlank()
+                enabled = ingredientName.isNotBlank() && ingredientAmount.isNotBlank(),
+                modifier = Modifier.align(Alignment.End)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Ingredient")
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Add Ingredient")
             }
         }
         
