@@ -13,16 +13,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.models.Recipe
 
 @Composable
 fun RecipeHeader(
-    title: String,
-    author: String,
-    rating: String = "4.5",
-    cookingTime: String = "10 mins",
-    difficulty: String = "Medium",
-    calories: String = "512 cal"
+    recipe: Recipe
 ) {
+    // Extract values for cleaner code
+    val title = recipe.title
+    val author = recipe.author
+    val rating = "4.5" // Hardcoded for now
+    val cookingTime = recipe.cookingTime ?: "10 mins"
+    val difficulty = recipe.difficulty ?: "Medium"
+    val calories = recipe.calories ?: "512 cal"
+    
     Column(modifier = Modifier.fillMaxWidth()) {
         // Title and Rating
         Row(
