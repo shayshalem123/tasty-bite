@@ -19,7 +19,8 @@ import com.example.myapplication.ui.components.SectionHeader
 @Composable
 fun RecommendationsSection(
     title: String = "Recommendation",
-    recipes: List<Recipe> = recommendedRecipes
+    recipes: List<Recipe> = recommendedRecipes,
+    onRecipeClick: (Recipe) -> Unit = {}
 ) {
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
         SectionHeader(title = title)
@@ -33,7 +34,10 @@ fun RecommendationsSection(
                 modifier = Modifier.padding(top = 8.dp)
             ) {
                 items(recipes) { recipe ->
-                    RecipeCard(recipe)
+                    RecipeCard(
+                        recipe = recipe,
+                        onClick = { onRecipeClick(recipe) }
+                    )
                 }
             }
         }
