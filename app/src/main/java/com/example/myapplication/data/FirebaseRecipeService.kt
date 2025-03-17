@@ -3,9 +3,8 @@ package com.example.myapplication.data
 import android.content.Context
 import android.util.Log
 import com.example.myapplication.models.Recipe
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.FirebaseFirestoreSettings
-import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.ktx.Firebase
+import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.tasks.await
 import org.json.JSONObject
 import java.util.UUID
@@ -16,8 +15,8 @@ import java.util.UUID
 class FirebaseRecipeService(private val context: Context? = null) {
     private val TAG = "FirebaseRecipeService"
     
-    // Storage instance - explicitly referencing your bucket
-    private val storage = FirebaseStorage.getInstance("gs://tasty-bite-19b53.firebasestorage.app")
+    // Storage instance - explicitly referencing your bucket with KTX syntax
+    private val storage = Firebase.storage("gs://tasty-bite-19b53.firebasestorage.app")
     private val storageRef = storage.reference
     
     /**

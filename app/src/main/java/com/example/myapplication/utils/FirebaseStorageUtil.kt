@@ -3,7 +3,6 @@ package com.example.myapplication.utils
 import android.net.Uri
 import android.util.Log
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.storage.FirebaseStorage
 import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
@@ -11,8 +10,8 @@ import java.util.UUID
 object FirebaseStorageUtil {
     private const val TAG = "FirebaseStorageUtil"
     
-    // Reference to your custom bucket
-    private val storage = FirebaseStorage.getInstance("gs://tasty-bite-19b53.firebasestorage.app")
+    // Reference to your custom bucket with KTX syntax
+    private val storage = Firebase.storage("gs://tasty-bite-19b53.firebasestorage.app")
     private val storageRef = storage.reference
     
     /**
