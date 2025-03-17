@@ -15,6 +15,7 @@ import com.example.myapplication.ui.screens.home.components.HomeHeader
 import com.example.myapplication.ui.screens.home.components.RecommendationsSection
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.data.categories
+import android.util.Log
 
 @Composable
 fun HomeScreen(
@@ -41,9 +42,25 @@ fun HomeScreen(
                 }
             }
             .filter { recipe ->
-                // Apply category filter
+                // Apply category filter - check both category and categories fields
                 if (selectedCategory.value != null) {
-                    recipe.categories?.contains(selectedCategory.value?.id) ?: false
+                    val categoryId = selectedCategory.value?.id ?: ""
+                    
+                    // Check regular category field (string)
+                    val matchesSingleCategory = recipe.category.equals(categoryId, ignoreCase = true)
+                    
+                    // Check categories field (list)
+                    val matchesInCategoriesList = recipe.categories?.contains(categoryId) ?: false
+                    
+                    // Log for debugging
+                    Log.d("CategoryFilter", "Recipe: ${recipe.title}, " +
+                        "Category: ${recipe.category}, " +
+                        "Categories: ${recipe.categories}, " +
+                        "Selected: $categoryId, " +
+                        "Matches: ${matchesSingleCategory || matchesInCategoriesList}")
+                    
+                    // Return true if either matches
+                    matchesSingleCategory || matchesInCategoriesList
                 } else {
                     true
                 }

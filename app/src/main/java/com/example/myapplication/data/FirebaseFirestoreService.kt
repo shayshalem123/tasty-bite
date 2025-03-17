@@ -65,7 +65,7 @@ class FirebaseFirestoreService {
                 "difficulty" to (recipe.difficulty ?: ""),
                 "calories" to (recipe.calories ?: ""),
                 "ingredients" to ingredientsData,
-                "categories" to (recipe.categories ?: listOf<String>()),
+                "categories" to (recipe.categories ?: if (recipe.category.isNotEmpty()) listOf(recipe.category) else listOf()),
                 "instructions" to (recipe.instructions ?: listOf<String>()),
                 "cookTime" to recipe.cookTime,
                 "servings" to recipe.servings,
