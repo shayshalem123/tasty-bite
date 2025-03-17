@@ -1,5 +1,6 @@
 package com.example.myapplication.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -13,7 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.auth.AuthState
 import com.example.myapplication.auth.AuthViewModel
-import com.example.myapplication.data.recommendedRecipes
+import com.example.myapplication.data.FirebaseFirestoreService
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.BottomNavigationBar
 import com.example.myapplication.ui.screens.add.AddRecipeScreen
@@ -22,6 +23,7 @@ import com.example.myapplication.ui.screens.auth.RegisterScreen
 import com.example.myapplication.ui.screens.detail.RecipeDetailScreen
 import com.example.myapplication.ui.screens.home.HomeScreen
 import com.example.myapplication.ui.screens.add.AddRecipeViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun TastyBiteApp(authViewModel: AuthViewModel) {
@@ -75,8 +77,40 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     // State to track if we're adding a new recipe
     var isAddingRecipe by remember { mutableStateOf(false) }
     
-    // State to hold all recipes (mutable to add new ones)
-    val allRecipes = remember { mutableStateListOf<Recipe>().apply { addAll(recommendedRecipes) } }
+    // State to hold all recipes from Firestore
+    val allRecipes = remember { mutableStateListOf<Recipe>() }
+    val isLoading = remember { mutableStateOf(true) }
+    val errorMessage = remember { mutableStateOf<String?>(null) }
+    
+    // Create instance of Firestore service
+    val firestoreService = remember { FirebaseFirestoreService() }
+    
+    // Create a coroutine scope here - at the composable function level
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Load recipes from Firestore when the screen is first shown
+    LaunchedEffect(Unit) {
+        try {
+            isLoading.value = true
+            errorMessage.value = null
+            
+            firestoreService.getAllRecipes()
+                .onSuccess { recipes ->
+                    allRecipes.clear()
+                    allRecipes.addAll(recipes)
+                    isLoading.value = false
+                }
+                .onFailure { error ->
+                    Log.e("TastyBiteApp", "Failed to load recipes", error)
+                    errorMessage.value = "Failed to load recipes: ${error.message}"
+                    isLoading.value = false
+                }
+        } catch (e: Exception) {
+            Log.e("TastyBiteApp", "Unexpected error loading recipes", e)
+            errorMessage.value = "Unexpected error: ${e.message}"
+            isLoading.value = false
+        }
+    }
     
     Box(modifier = Modifier.fillMaxSize()) {
         when {
@@ -130,12 +164,69 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                     },
                     floatingActionButtonPosition = FabPosition.Center
                 ) { paddingValues ->
-                    HomeScreen(
-                        modifier = Modifier.padding(paddingValues),
-                        onRecipeClick = { recipe -> selectedRecipe = recipe },
-                        recipes = allRecipes
-                    )
+                    if (isLoading.value) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    } else if (errorMessage.value != null) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Text(
+                                    text = errorMessage.value ?: "Unknown error",
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                                Button(
+                                    onClick = {
+                                        // Reload recipes - using the scope defined above
+                                        coroutineScope.launch {
+                                            isLoading.value = true
+                                            errorMessage.value = null
+                                            firestoreService.getAllRecipes()
+                                                .onSuccess { recipes ->
+                                                    allRecipes.clear()
+                                                    allRecipes.addAll(recipes)
+                                                    isLoading.value = false
+                                                }
+                                                .onFailure { error ->
+                                                    errorMessage.value = "Failed to load recipes: ${error.message}"
+                                                    isLoading.value = false
+                                                }
+                                        }
+                                    }
+                                ) {
+                                    Text("Retry")
+                                }
+                            }
+                        }
+                    } else {
+                        HomeScreen(
+                            modifier = Modifier.padding(paddingValues),
+                            onRecipeClick = { recipe -> selectedRecipe = recipe },
+                            recipes = allRecipes
+                        )
+                    }
                 }
+            }
+        }
+        
+        // Add a refresh action to reload recipes after adding a new one
+        LaunchedEffect(isAddingRecipe) {
+            if (!isAddingRecipe) {
+                firestoreService.getAllRecipes()
+                    .onSuccess { recipes ->
+                        allRecipes.clear()
+                        allRecipes.addAll(recipes)
+                    }
             }
         }
     }
