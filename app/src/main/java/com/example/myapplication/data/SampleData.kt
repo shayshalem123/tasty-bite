@@ -34,7 +34,17 @@ val recommendedRecipes = listOf(
             Ingredient("Parmesan Cheese", "50 g", R.drawable.placeholder_image),
             Ingredient("Black Pepper", "5 g", R.drawable.placeholder_image),
             Ingredient("Salt", "3 g", R.drawable.placeholder_image)
-        )
+        ),
+        instructions = listOf(
+            "Boil the spaghetti",
+            "Cook the pancetta",
+            "Mix eggs and cheese",
+            "Combine with pasta",
+            "Serve hot"
+        ),
+        cookTime = 20,
+        servings = 4,
+        category = "pasta"
     ),
     Recipe(
         id = "2",
@@ -53,7 +63,17 @@ val recommendedRecipes = listOf(
             Ingredient("Fresh Basil", "10 g", R.drawable.placeholder_image),
             Ingredient("Olive Oil", "15 g", R.drawable.placeholder_image),
             Ingredient("Salt", "2 g", R.drawable.placeholder_image)
-        )
+        ),
+        instructions = listOf(
+            "Spread tomato sauce on dough",
+            "Add mozzarella cheese",
+            "Top with fresh basil",
+            "Bake in oven",
+            "Serve hot"
+        ),
+        cookTime = 30,
+        servings = 8,
+        category = "pizza"
     ),
     Recipe(
         id = "3",
@@ -72,7 +92,17 @@ val recommendedRecipes = listOf(
             Ingredient("Caesar Dressing", "60 g", R.drawable.placeholder_image),
             Ingredient("Chicken Breast", "200 g", R.drawable.placeholder_image),
             Ingredient("Cherry Tomatoes", "100 g", R.drawable.placeholder_image)
-        )
+        ),
+        instructions = listOf(
+            "Chop romaine lettuce",
+            "Add croutons",
+            "Dress with Caesar dressing",
+            "Add chicken and tomatoes",
+            "Serve"
+        ),
+        cookTime = 15,
+        servings = 4,
+        category = "salad"
     ),
     Recipe(
         id = "4",
@@ -93,7 +123,17 @@ val recommendedRecipes = listOf(
             Ingredient("Milk", "120 g", R.drawable.placeholder_image),
             Ingredient("Vanilla Extract", "5 g", R.drawable.placeholder_image),
             Ingredient("Baking Powder", "10 g", R.drawable.placeholder_image)
-        )
+        ),
+        instructions = listOf(
+            "Preheat oven to 350°F (175°C)",
+            "Mix dry ingredients",
+            "Add eggs, butter, and milk",
+            "Bake for 45 minutes",
+            "Cool and frost"
+        ),
+        cookTime = 45,
+        servings = 8,
+        category = "dessert"
     ),
     Recipe(
         id = "5",
@@ -115,7 +155,17 @@ val recommendedRecipes = listOf(
             Ingredient("Coconut Milk", "200 g", R.drawable.placeholder_image),
             Ingredient("Vegetable Oil", "30 g", R.drawable.placeholder_image),
             Ingredient("Fresh Cilantro", "10 g", R.drawable.placeholder_image)
-        )
+        ),
+        instructions = listOf(
+            "Sauté onions and ginger",
+            "Add tomatoes and curry powder",
+            "Cook until tomatoes are soft",
+            "Add coconut milk and chicken",
+            "Simmer until chicken is cooked"
+        ),
+        cookTime = 40,
+        servings = 4,
+        category = "chicken"
     ),
     Recipe(
         id = "6",
@@ -136,6 +186,16 @@ val recommendedRecipes = listOf(
             Ingredient("Heavy Cream", "100 g", R.drawable.placeholder_image),
             Ingredient("Olive Oil", "30 g", R.drawable.placeholder_image),
             Ingredient("Salt and Pepper", "5 g", R.drawable.placeholder_image)
-        )
+        ),
+        instructions = listOf(
+            "Sauté onions and garlic",
+            "Add tomatoes and vegetable broth",
+            "Simmer until tomatoes are soft",
+            "Add fresh basil",
+            "Blend and add heavy cream"
+        ),
+        cookTime = 30,
+        servings = 4,
+        category = "soup"
     )
 ) 

@@ -1,7 +1,7 @@
 package com.example.myapplication.models
 
 data class Recipe(
-    val id: String,
+    val id: String = "",
     val title: String,
     val author: String,
     val imageUrl: Int, // Using resource ID for now, would be URL in real app
@@ -10,7 +10,14 @@ data class Recipe(
     val cookingTime: String? = null,
     val difficulty: String? = null,
     val calories: String? = null,
-    val ingredients: List<Ingredient>? = null
+    val ingredients: List<Ingredient>? = null,
+    val instructions: List<String>,
+    val cookTime: Int,
+    val servings: Int,
+    val category: String,
+    val isFavorite: Boolean = false,
+    val createdBy: String = "",
+    val createdAt: Long = System.currentTimeMillis()
 )
 
 data class Category(

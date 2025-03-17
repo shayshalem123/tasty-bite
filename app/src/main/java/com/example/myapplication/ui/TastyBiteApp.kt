@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.auth.AuthState
 import com.example.myapplication.auth.AuthViewModel
@@ -20,6 +21,7 @@ import com.example.myapplication.ui.screens.auth.LoginScreen
 import com.example.myapplication.ui.screens.auth.RegisterScreen
 import com.example.myapplication.ui.screens.detail.RecipeDetailScreen
 import com.example.myapplication.ui.screens.home.HomeScreen
+import com.example.myapplication.ui.screens.add.AddRecipeViewModel
 
 @Composable
 fun TastyBiteApp(authViewModel: AuthViewModel) {
@@ -80,12 +82,16 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
         when {
             // Show add recipe screen
             isAddingRecipe -> {
+                val context = LocalContext.current
+                val addRecipeViewModel = remember(context) { AddRecipeViewModel(context) }
                 AddRecipeScreen(
                     onBackClick = { isAddingRecipe = false },
                     onRecipeAdded = { newRecipe -> 
                         allRecipes.add(newRecipe)
                         isAddingRecipe = false
-                    }
+                    },
+                    authViewModel = authViewModel,
+                    addRecipeViewModel = addRecipeViewModel
                 )
             }
             // Show recipe detail screen
