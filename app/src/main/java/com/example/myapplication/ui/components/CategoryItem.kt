@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -29,12 +30,16 @@ fun CategoryItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .padding(horizontal = 8.dp)
-            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .clip(
+                RoundedCornerShape(10.dp)
+            )
+            .clickable(onClick = onClick),
     ) {
         Card(
             modifier = Modifier
                 .size(64.dp)
+                .padding(2.dp)
                 .then(
                     if (isSelected) 
                         Modifier.border(
