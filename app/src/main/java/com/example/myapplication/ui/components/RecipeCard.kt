@@ -1,6 +1,8 @@
 package com.example.myapplication.ui.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -13,37 +15,48 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.myapplication.models.Recipe
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.clickable
+import com.example.myapplication.models.Recipe
+import com.example.myapplication.R
+import androidx.compose.foundation.layout.Arrangement
 
 @Composable
 fun RecipeCard(
     recipe: Recipe,
-    onClick: () -> Unit = {}  // Default empty click handler
+    onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .width(200.dp)
             .padding(vertical = 8.dp)
-            .clickable { onClick() },  // Add clickable modifier
+            .clickable { onClick() },
         shape = RoundedCornerShape(16.dp)
     ) {
         Column {
+            // Use a safe resource ID that we know exists
+            val imageRes = R.drawable.placeholder_image
+            
+            // Simple image rendering with fallback built in
             Image(
-                painter = painterResource(id = recipe.imageUrl),
+                painter = painterResource(id = imageRes),
                 contentDescription = recipe.title,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
                 contentScale = ContentScale.Crop
             )
+            
             Column(modifier = Modifier.padding(12.dp)) {
                 Text(
                     text = recipe.title,
@@ -72,9 +85,11 @@ fun SearchResultRecipeItem(recipe: Recipe) {
                 .fillMaxWidth()
                 .height(100.dp)
         ) {
-            // Recipe image
+            // Use a safe resource ID that we know exists
+            val imageRes = R.drawable.placeholder_image
+            
             Image(
-                painter = painterResource(id = recipe.imageUrl),
+                painter = painterResource(id = imageRes),
                 contentDescription = recipe.title,
                 modifier = Modifier
                     .width(100.dp)

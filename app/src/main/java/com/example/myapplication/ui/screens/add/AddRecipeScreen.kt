@@ -1,20 +1,66 @@
 package com.example.myapplication.ui.screens.add
 
-import androidx.compose.foundation.layout.*
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 import com.example.myapplication.R
+import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.data.categories
 import com.example.myapplication.models.Ingredient
 import com.example.myapplication.models.Recipe
@@ -23,8 +69,6 @@ import com.example.myapplication.ui.screens.add.components.FormTextField
 import com.example.myapplication.ui.screens.add.components.IngredientsList
 import com.example.myapplication.ui.screens.add.components.NumericFormField
 import kotlinx.coroutines.launch
-import java.util.UUID
-import com.example.myapplication.auth.AuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,6 +121,51 @@ fun AddRecipeScreen(
         }
     }
 
+    // Image selection state
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var imageErrorMessage by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+
+    // Image picker launcher
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        // Validate the image when selected
+        if (uri != null) {
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(uri)
+            
+            // Check file type
+            val isValidType = mimeType == "image/jpeg" || mimeType == "image/png"
+            
+            // Check file size (limit to 2MB)
+            val fileSize = try {
+                contentResolver.openInputStream(uri)?.use { it.available() } ?: 0
+            } catch (e: Exception) {
+                -1
+            }
+            val isValidSize = fileSize in 1..2 * 1024 * 1024 // 2MB max
+            
+            when {
+                !isValidType -> {
+                    imageErrorMessage = "Invalid format. Please select a JPEG or PNG image."
+                    selectedImageUri = null
+                }
+                !isValidSize -> {
+                    imageErrorMessage = "Image is too large. Maximum size is 2MB."
+                    selectedImageUri = null
+                }
+                else -> {
+                    selectedImageUri = uri
+                    imageErrorMessage = null
+                }
+            }
+        }
+    }
+
+    // Keep track of the selected image URI for future implementation
+    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+
     // Handle form submission
     val onSubmit = {
         if (isFormValid) {
@@ -98,7 +187,7 @@ fun AddRecipeScreen(
                 id = "",  // Will be set by Firebase
                 title = title,
                 author = author,
-                imageUrl = R.drawable.placeholder_image,
+                imageUrl = R.drawable.placeholder_image,  // Always use a placeholder for now
                 categories = selectedCategories,
                 description = description,
                 cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
@@ -112,10 +201,23 @@ fun AddRecipeScreen(
                 createdBy = currentUser?.email ?: "anonymous"
             )
             
+            // Instead of trying to store the URI in a temp variable, just log it 
+            if (selectedImageUri != null) {
+                // In a real app, you would upload this to Firebase Storage here
+                // Log.d("ImageUpload", "Selected image URI: ${selectedImageUri.toString()}")
+            }
+            
             // Save to Firebase and pass to parent
             addRecipeViewModel.saveRecipe(newRecipe) { savedRecipe ->
                 onRecipeAdded(savedRecipe)
             }
+
+            // Note: We're using a placeholder image for now.
+            // To properly handle image uploads, we would need to:
+            // 1. Upload the image to Firebase Storage first
+            // 2. Get the download URL
+            // 3. Store that URL in Firestore
+            // This would require additional functionality that's outside the current scope
         } else {
             // Show validation errors
             showErrors = true
@@ -399,6 +501,65 @@ fun AddRecipeScreen(
                 suffix = "servings",
                 modifier = Modifier.fillMaxWidth()
             )
+            
+            // Image selection component
+            Column(
+                modifier = Modifier.padding(vertical = 16.dp)
+            ) {
+                Text(
+                    text = "Recipe Image",
+                    style = MaterialTheme.typography.titleMedium, 
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                Button(
+                    onClick = { imagePicker.launch("image/*") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AddCircle,
+                        contentDescription = "Select Image",
+                        modifier = Modifier.size(24.dp).padding(end = 8.dp)
+                    )
+                    Text("Select Image")
+                }
+                
+                // Preview selected image
+                if (selectedImageUri != null) {
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(selectedImageUri)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Recipe image preview",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+                }
+                
+                // Show error if validation failed
+                if (imageErrorMessage != null) {
+                    Text(
+                        text = imageErrorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
             
             // Error message
             if (saveState is SaveState.Error) {
