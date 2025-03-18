@@ -30,6 +30,7 @@ import androidx.compose.foundation.clickable
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.R
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.Alignment
 
 @Composable
 fun RecipeCard(
@@ -39,13 +40,18 @@ fun RecipeCard(
     Card(
         modifier = Modifier
             .width(200.dp)
-            .padding(vertical = 8.dp)
+            .padding(vertical = 18.dp, horizontal = 4.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column {
+        Column (
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .padding(top = 8.dp)
+        ) {
             // Use a safe resource ID that we know exists
             val imageRes = R.drawable.placeholder_image
+
             
             // Simple image rendering with fallback built in
             Image(
@@ -57,15 +63,19 @@ fun RecipeCard(
                 contentScale = ContentScale.Crop
             )
             
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
+                    .padding(12.dp)
+            ) {
                 Text(
                     text = recipe.title,
-                    fontSize = 16.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
                     text = recipe.author,
-                    fontSize = 12.sp,
+                    fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
