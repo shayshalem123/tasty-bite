@@ -3,6 +3,7 @@ package com.example.myapplication.data
 import android.content.Context
 import android.util.Log
 import com.example.myapplication.models.Recipe
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.storage.ktx.storage
 import kotlinx.coroutines.tasks.await
@@ -19,12 +20,15 @@ class FirebaseRecipeService(private val context: Context? = null) {
     private val storage = Firebase.storage("gs://tasty-bite-19b53.firebasestorage.app")
     private val storageRef = storage.reference
     
+    // Initialize Firestore
+    private val db = Firebase.firestore
+    
     /**
      * Saves a new recipe to both Firestore and Storage
      * @param recipe The recipe to save
      * @return Result indicating success or failure
      */
-    suspend fun saveRecipe(recipe: Recipe): Result<String> {
+    suspend fun saveRecipe(recipe: Recipe): Result<Recipe> {
         return try {
             Log.d(TAG, "Starting recipe save process for: ${recipe.title}")
             
@@ -75,8 +79,11 @@ class FirebaseRecipeService(private val context: Context? = null) {
                 "storageUrl" to (storageUrl ?: "")
             )
             
+            // Save recipe data to Firestore
+            db.collection("recipes").document(recipeId).set(recipeData).await()
+            
             Log.d(TAG, "Recipe saved successfully with ID: $recipeId")
-            Result.success(recipeId)
+            Result.success(recipe)
             
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save recipe", e)

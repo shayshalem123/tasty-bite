@@ -42,23 +42,63 @@ class FirebaseStorageService {
         try {
             Log.d(TAG, "Starting image upload for URI: $imageUri")
 
-            val image = storageRef.child("images/mountains.jpg")
+            // Create a unique filename using UUID
+            val filename = "recipe_images/${UUID.randomUUID()}.jpg"
+            val imageRef = storageRef.child(filename)
             
-            // Get input stream from URI
-            image.putFile(imageUri).await()
+            // Upload the file
+            val uploadTask = imageRef.putFile(imageUri)
+            currentUploadTask = uploadTask
+            
+            // Set up progress listener
+            uploadTask.addOnProgressListener { taskSnapshot ->
+                val progress = (100.0 * taskSnapshot.bytesTransferred / taskSnapshot.totalByteCount).toInt()
+                onProgress(progress)
+            }
+            
+            // Wait for upload to complete
+            uploadTask.await()
             Log.d(TAG, "Upload completed successfully")
             
-            // Get the download
+            // Get the download URL
+            val downloadUrl = imageRef.downloadUrl.await().toString()
+            Log.d(TAG, "Download URL: $downloadUrl")
             
-            Result.success("hello")
+            onProgress(100)
+            currentUploadTask = null
+            Result.success(downloadUrl)
         } catch (e: Exception) {
             Log.e(TAG, "Error uploading image", e)
             onProgress(0) // Reset progress
+            currentUploadTask = null
             Result.failure(e)
         }
     }
 
-    // Add this function to the FirebaseStorageService class
+    /**
+     * Gets the download URL for an image from Firebase Storage
+     * 
+     * @param imageUrl The path of the image in Firebase Storage
+     * @return Result containing the download URL as a String or an error
+     */
+    suspend fun getImageUrl(imageUrl: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            // If the URL already looks like a valid http(s) URL, return it directly
+            if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
+                return@withContext Result.success(imageUrl)
+            }
+            
+            // Otherwise, treat it as a reference path in Firebase Storage
+            val imageRef = storageRef.child(imageUrl)
+            val downloadUrl = imageRef.downloadUrl.await().toString()
+            Result.success(downloadUrl)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting download URL for $imageUrl", e)
+            Result.failure(e)
+        }
+    }
+
+    // Cancel current upload
     fun cancelUpload() {
         currentUploadTask?.cancel()
         currentUploadTask = null

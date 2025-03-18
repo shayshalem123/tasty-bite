@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +32,10 @@ import com.example.myapplication.models.Recipe
 import com.example.myapplication.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
+import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
 
 @Composable
 fun RecipeCard(
@@ -49,18 +54,41 @@ fun RecipeCard(
             modifier = Modifier
                 .padding(top = 8.dp)
         ) {
-            // Use a safe resource ID that we know exists
-            val imageRes = R.drawable.placeholder_image
-
-            
-            // Simple image rendering with fallback built in
-            Image(
-                painter = painterResource(id = imageRes),
+            // Load image from URL using Coil
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(recipe.imageUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = recipe.title,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                loading = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                },
+                error = {
+                    // Fallback to placeholder image if URL fails to load
+                    Image(
+                        painter = painterResource(id = R.drawable.placeholder_image),
+                        contentDescription = recipe.title,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             )
             
             Column(
@@ -95,16 +123,41 @@ fun SearchResultRecipeItem(recipe: Recipe) {
                 .fillMaxWidth()
                 .height(100.dp)
         ) {
-            // Use a safe resource ID that we know exists
-            val imageRes = R.drawable.placeholder_image
-            
-            Image(
-                painter = painterResource(id = imageRes),
+            // Load image from URL using Coil
+            SubcomposeAsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(recipe.imageUrl)
+                    .crossfade(true)
+                    .build(),
                 contentDescription = recipe.title,
                 modifier = Modifier
                     .width(100.dp)
                     .fillMaxHeight(),
-                contentScale = ContentScale.Crop
+                contentScale = ContentScale.Crop,
+                loading = {
+                    Box(
+                        modifier = Modifier
+                            .width(100.dp)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(8.dp)
+                        )
+                    }
+                },
+                error = {
+                    // Fallback to placeholder image if URL fails to load
+                    Image(
+                        painter = painterResource(id = R.drawable.placeholder_image),
+                        contentDescription = recipe.title,
+                        modifier = Modifier
+                            .width(100.dp)
+                            .fillMaxHeight(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
             )
             
             // Recipe details

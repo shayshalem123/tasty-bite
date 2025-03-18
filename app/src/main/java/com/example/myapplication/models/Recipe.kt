@@ -4,7 +4,7 @@ data class Recipe(
     val id: String = "",
     val title: String,
     val author: String,
-    val imageUrl: Int, // Using resource ID for now, would be URL in real app
+    val imageUrl: String, // Using resource ID for now, would be URL in real app
     val categories: List<String>? = null, // Category IDs
     val description: String? = null,
     val cookingTime: String? = null,

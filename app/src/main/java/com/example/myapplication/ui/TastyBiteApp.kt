@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.auth.AuthState
 import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.data.FirebaseFirestoreService
+import com.example.myapplication.data.FirebaseStorageService
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.BottomNavigationBar
 import com.example.myapplication.ui.screens.add.AddRecipeScreen
@@ -85,6 +86,9 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     // Create instance of Firestore service
     val firestoreService = remember { FirebaseFirestoreService() }
     
+    // Create instance of Firebase Storage service
+    val storageService = remember { FirebaseStorageService() }
+    
     // Create a coroutine scope here - at the composable function level
     val coroutineScope = rememberCoroutineScope()
     
@@ -97,7 +101,30 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
             firestoreService.getAllRecipes()
                 .onSuccess { recipes ->
                     allRecipes.clear()
-                    allRecipes.addAll(recipes)
+                    
+                    // Process each recipe to ensure image URLs are resolved
+                    recipes.forEach { recipe ->
+                        // If imageUrl isn't a valid http/https URL, try to get the download URL from Firebase Storage
+                        if (!recipe.imageUrl.startsWith("http://") && !recipe.imageUrl.startsWith("https://") && recipe.imageUrl.isNotEmpty()) {
+                            coroutineScope.launch {
+                                storageService.getImageUrl(recipe.imageUrl)
+                                    .onSuccess { downloadUrl ->
+                                        // Find the recipe in the allRecipes list and update its imageUrl
+                                        val index = allRecipes.indexOfFirst { it.id == recipe.id }
+                                        if (index >= 0) {
+                                            allRecipes[index] = allRecipes[index].copy(imageUrl = downloadUrl)
+                                        }
+                                    }
+                                    .onFailure { error ->
+                                        Log.e("TastyBiteApp", "Failed to get image URL for recipe ${recipe.id}: ${error.message}")
+                                    }
+                            }
+                        }
+                        
+                        // Add the recipe to the list regardless of image URL resolution
+                        allRecipes.add(recipe)
+                    }
+                    
                     isLoading.value = false
                 }
                 .onFailure { error ->
@@ -225,7 +252,29 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                 firestoreService.getAllRecipes()
                     .onSuccess { recipes ->
                         allRecipes.clear()
-                        allRecipes.addAll(recipes)
+                        
+                        // Process each recipe to ensure image URLs are resolved
+                        recipes.forEach { recipe ->
+                            // If imageUrl isn't a valid http/https URL, try to get the download URL from Firebase Storage
+                            if (!recipe.imageUrl.startsWith("http://") && !recipe.imageUrl.startsWith("https://") && recipe.imageUrl.isNotEmpty()) {
+                                coroutineScope.launch {
+                                    storageService.getImageUrl(recipe.imageUrl)
+                                        .onSuccess { downloadUrl ->
+                                            // Find the recipe in the allRecipes list and update its imageUrl
+                                            val index = allRecipes.indexOfFirst { it.id == recipe.id }
+                                            if (index >= 0) {
+                                                allRecipes[index] = allRecipes[index].copy(imageUrl = downloadUrl)
+                                            }
+                                        }
+                                        .onFailure { error ->
+                                            Log.e("TastyBiteApp", "Failed to get image URL for recipe ${recipe.id}: ${error.message}")
+                                        }
+                                }
+                            }
+                            
+                            // Add the recipe to the list regardless of image URL resolution
+                            allRecipes.add(recipe)
+                        }
                     }
             }
         }

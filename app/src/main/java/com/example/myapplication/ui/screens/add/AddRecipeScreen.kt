@@ -71,6 +71,7 @@ import com.example.myapplication.ui.screens.add.components.IngredientsList
 import com.example.myapplication.ui.screens.add.components.NumericFormField
 import kotlinx.coroutines.launch
 import android.util.Log
+import com.example.myapplication.data.FirebaseRecipeService
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,6 +92,7 @@ fun AddRecipeScreen(
     var calories by remember { mutableStateOf("") }
     var selectedCategories by remember { mutableStateOf<List<String>>(emptyList()) }
     var ingredients by remember { mutableStateOf<List<Ingredient>>(emptyList()) }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     
     // New fields for the required parameters
     var primaryCategory by remember { mutableStateOf("") }
@@ -102,7 +104,7 @@ fun AddRecipeScreen(
     var showErrorSnackbar by remember { mutableStateOf(false) }
     
     // Form is valid when these required fields are filled
-    val isFormValid = title.isNotBlank() && author.isNotBlank() && ingredients.isNotEmpty()
+    val isFormValid = title.isNotBlank() && author.isNotBlank() && ingredients.isNotEmpty() && selectedImageUri != null
 
     // Remember the snackbar host state
     val snackbarHostState = remember { SnackbarHostState() }
@@ -124,7 +126,6 @@ fun AddRecipeScreen(
     }
 
     // Image selection state
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     var imageErrorMessage by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
 
@@ -133,7 +134,7 @@ fun AddRecipeScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         // Validate the image when selected
-1234        if (uri != null) {
+        if (uri != null) {
             val contentResolver = context.contentResolver
             val mimeType = contentResolver.getType(uri)
             
@@ -172,6 +173,13 @@ fun AddRecipeScreen(
     val uploadState by addRecipeViewModel.uploadState.collectAsState()
     val uploadProgress by addRecipeViewModel.uploadProgress.collectAsState()
 
+    // Effect to show image error message when upload fails
+    LaunchedEffect(uploadState) {
+        if (uploadState is UploadState.Error) {
+            imageErrorMessage = (uploadState as UploadState.Error).message
+        }
+    }
+
     // Animating progress value for smoother UI
     val animatedProgress by animateFloatAsState(
         targetValue = uploadProgress / 100f,
@@ -181,28 +189,37 @@ fun AddRecipeScreen(
     // Handle form submission
     val onSubmit: Function0<Unit> = {
         if (isFormValid) {
-            // If image is selected, start a coroutine to upload it
-            if (selectedImageUri != null) {
-                scope.launch {
+            // Reset any previous errors
+            addRecipeViewModel.resetSaveState()
+            
+            // Since image is now required, we can simplify the submission logic
+            scope.launch {
+                try {
+                    // Start saving process - this will show the loading indicator
+                    addRecipeViewModel.setSaving()
+                    
                     val imageUrl = addRecipeViewModel.uploadImage(
                         context,
                         selectedImageUri!!
                     )
                     
-                    // Log the image URL for now
-                    imageUrl?.let {
-                        Log.d("ImageUpload", "Image uploaded. URL: $it")
-                        // We've stored the URL but we're not adding it to the recipe yet
-                        // as per the requirements
+                    // Check if image upload was successful
+                    if (imageUrl == null) {
+                        // Image upload failed
+                        addRecipeViewModel.setError("Failed to upload image")
+                        return@launch
                     }
                     
-                    // Create and save the recipe (without the URL for now)
-                    // This remains the same as your existing code
+                    imageUrl.let {
+                        Log.d("ImageUpload", "Image uploaded. URL: $it")
+                    }
+                    
+                    // Create and save the recipe
                     val newRecipe = Recipe(
                         id = "",
                         title = title,
                         author = author,
-                        imageUrl = R.drawable.placeholder_image, // Still using placeholder
+                        imageUrl = imageUrl, // Use the actual image URL from Cloud Storage
                         categories = selectedCategories,
                         description = description,
                         cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
@@ -219,43 +236,27 @@ fun AddRecipeScreen(
                         category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
                         createdBy = currentUser?.email ?: "anonymous"
                     )
+                    FirebaseRecipeService().saveRecipe(newRecipe)
+                    onBackClick()
                     
-                    addRecipeViewModel.saveRecipe(newRecipe) { savedRecipe ->
-                        onRecipeAdded(savedRecipe)
-                    }
-                }
-            } else {
-                // No image selected, just save the recipe as before
-                val newRecipe = Recipe(
-                    id = "",
-                    title = title,
-                    author = author,
-                    imageUrl = R.drawable.placeholder_image, // Still using placeholder
-                    categories = selectedCategories,
-                    description = description,
-                    cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
-                    difficulty = difficulty,
-                    calories = if (calories.isNotBlank()) "${calories} cal" else "",
-                    ingredients = ingredients,
-                    instructions = if (instructions.isNotBlank()) {
-                        instructions.split("\n")
-                    } else {
-                        listOf("No instructions provided")
-                    },
-                    cookTime = cookingTime.toIntOrNull() ?: 30,
-                    servings = servingsCount.toIntOrNull() ?: 4,
-                    category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
-                    createdBy = currentUser?.email ?: "anonymous"
-                )
-                
-                addRecipeViewModel.saveRecipe(newRecipe) { savedRecipe ->
-                    onRecipeAdded(savedRecipe)
+//                    addRecipeViewModel.saveRecipe(newRecipe) { savedRecipe ->
+//                        onRecipeAdded(savedRecipe)
+//                        // Navigate back to main screen after successful save
+//                        onBackClick()
+//                    }
+                } catch (e: Exception) {
+                    Log.e("AddRecipeScreen", "Error in recipe submission", e)
+                    addRecipeViewModel.setError("Error: ${e.message ?: "Unknown error"}")
                 }
             }
         } else {
-            // Show validation errors
+            // Show validation errors and ensure we're not in loading state
             showErrors = true
             showErrorSnackbar = true
+            // Reset save state if it's in loading state to prevent showing loading indicator
+            if (saveState is SaveState.Saving) {
+                addRecipeViewModel.resetSaveState()
+            }
         }
     }
 
@@ -320,7 +321,7 @@ fun AddRecipeScreen(
                                           else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        if (saveState is SaveState.Saving) {
+                        if (saveState is SaveState.Saving && isFormValid) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
                                 color = MaterialTheme.colorScheme.onPrimary
@@ -370,6 +371,7 @@ fun AddRecipeScreen(
                                 if (title.isBlank()) append("\n• Recipe title")
                                 if (author.isBlank()) append("\n• Author name")
                                 if (ingredients.isEmpty()) append("\n• At least one ingredient")
+                                if (selectedImageUri == null) append("\n• Recipe image")
                             },
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.fillMaxWidth()
@@ -540,12 +542,25 @@ fun AddRecipeScreen(
             Column(
                 modifier = Modifier.padding(vertical = 16.dp)
             ) {
-                Text(
-                    text = "Recipe Image",
-                    style = MaterialTheme.typography.titleMedium, 
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Recipe Image *",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    if (showErrors && selectedImageUri == null) {
+                        Text(
+                            text = " (Required)",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(bottom = 8.dp, start = 4.dp)
+                        )
+                    }
+                }
                 
+                // Button to select image
                 Button(
                     onClick = { imagePicker.launch("image/*") },
                     modifier = Modifier.fillMaxWidth()
@@ -556,6 +571,16 @@ fun AddRecipeScreen(
                         modifier = Modifier.size(24.dp).padding(end = 8.dp)
                     )
                     Text("Select Image")
+                }
+                
+                // Show image error message if any
+                imageErrorMessage?.let { error ->
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
                 
                 // Preview selected image
@@ -638,12 +663,10 @@ fun AddRecipeScreen(
                 }
             }
 
-            // Add an additional check for SaveState.Success
+            // Remove the redundant LaunchedEffect since we're already handling navigation in the callback
             if (saveState is SaveState.Success) {
-                LaunchedEffect(saveState) {
-                    // Navigate back or show success message then navigate back
-                    onBackClick()
-                }
+                // We now handle navigation in the saveRecipe callback above
+                // This ensures we navigate after the recipe has been properly added
             }
         }
     }
