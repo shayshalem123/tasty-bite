@@ -1,11 +1,13 @@
 package com.example.myapplication.ui.screens.add
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.data.FirebaseFirestoreService
 import com.example.myapplication.data.FirebaseRecipeService
+import com.example.myapplication.data.FirebaseStorageService
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.utils.FirebaseStorageUtil
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,12 +18,19 @@ class AddRecipeViewModel(private val context: Context) : ViewModel() {
     private val TAG = "AddRecipeViewModel"
     private val firebaseRecipeService = FirebaseRecipeService(context)
     private val firestoreService = FirebaseFirestoreService()
+    private val storageService = FirebaseStorageService()
     
     private val _saveState = MutableStateFlow<SaveState>(SaveState.Initial)
     val saveState: StateFlow<SaveState> = _saveState
 
     private val _debug = MutableStateFlow<String?>(null)
     val debug: StateFlow<String?> = _debug
+    
+    private val _uploadProgress = MutableStateFlow(0)
+    val uploadProgress: StateFlow<Int> = _uploadProgress
+
+    private val _uploadState = MutableStateFlow<UploadState>(UploadState.Idle)
+    val uploadState: StateFlow<UploadState> = _uploadState
     
     fun saveRecipe(recipe: Recipe, onSuccess: (Recipe) -> Unit) {
         viewModelScope.launch {
@@ -76,6 +85,33 @@ class AddRecipeViewModel(private val context: Context) : ViewModel() {
                 }
         }
     }
+
+    suspend fun uploadImage(context: Context, imageUri: Uri): String? {
+        _uploadState.value = UploadState.Loading
+        
+        storageService.uploadImage(
+            context = context,
+            imageUri = imageUri,
+            onProgress = { progress ->
+                _uploadProgress.value = progress
+            }
+        ).fold(
+            onSuccess = { downloadUrl ->
+                _uploadState.value = UploadState.Success(downloadUrl)
+                return downloadUrl
+            },
+            onFailure = { exception ->
+                _uploadState.value = UploadState.Error(exception.message ?: "Unknown error")
+                return null
+            }
+        )
+    }
+
+    fun cancelUpload() {
+        storageService.cancelUpload()
+        _uploadProgress.value = 0
+        _uploadState.value = UploadState.Idle
+    }
 }
 
 sealed class SaveState {
@@ -83,4 +119,11 @@ sealed class SaveState {
     object Saving : SaveState()
     object Success : SaveState()
     data class Error(val message: String) : SaveState()
+}
+
+sealed class UploadState {
+    object Idle : UploadState()
+    object Loading : UploadState()
+    data class Success(val imageUrl: String) : UploadState()
+    data class Error(val message: String) : UploadState()
 } 

@@ -3,6 +3,7 @@ package com.example.myapplication.ui.screens.add
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,6 +70,7 @@ import com.example.myapplication.ui.screens.add.components.FormTextField
 import com.example.myapplication.ui.screens.add.components.IngredientsList
 import com.example.myapplication.ui.screens.add.components.NumericFormField
 import kotlinx.coroutines.launch
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -131,7 +133,7 @@ fun AddRecipeScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         // Validate the image when selected
-        if (uri != null) {
+1234        if (uri != null) {
             val contentResolver = context.contentResolver
             val mimeType = contentResolver.getType(uri)
             
@@ -166,58 +168,90 @@ fun AddRecipeScreen(
     // Keep track of the selected image URI for future implementation
     var tempImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Handle form submission
-    val onSubmit = {
-        if (isFormValid) {
-            // Create instructions list from text
-            val instructionsList = if (instructions.isNotBlank()) {
-                instructions.split("\n")
-            } else {
-                listOf("No instructions provided")
-            }
-            
-            // Use first selected category or default
-            val category = if (selectedCategories.isNotEmpty()) {
-                selectedCategories.first()
-            } else {
-                "other"
-            }
-            
-            val newRecipe = Recipe(
-                id = "",  // Will be set by Firebase
-                title = title,
-                author = author,
-                imageUrl = R.drawable.placeholder_image,  // Always use a placeholder for now
-                categories = selectedCategories,
-                description = description,
-                cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
-                difficulty = difficulty,
-                calories = if (calories.isNotBlank()) "${calories} cal" else "",
-                ingredients = ingredients,
-                instructions = instructionsList,
-                cookTime = cookingTime.toIntOrNull() ?: 30,
-                servings = servingsCount.toIntOrNull() ?: 4,
-                category = category,
-                createdBy = currentUser?.email ?: "anonymous"
-            )
-            
-            // Instead of trying to store the URI in a temp variable, just log it 
-            if (selectedImageUri != null) {
-                // In a real app, you would upload this to Firebase Storage here
-                // Log.d("ImageUpload", "Selected image URI: ${selectedImageUri.toString()}")
-            }
-            
-            // Save to Firebase and pass to parent
-            addRecipeViewModel.saveRecipe(newRecipe) { savedRecipe ->
-                onRecipeAdded(savedRecipe)
-            }
+    // Collect upload state and progress
+    val uploadState by addRecipeViewModel.uploadState.collectAsState()
+    val uploadProgress by addRecipeViewModel.uploadProgress.collectAsState()
 
-            // Note: We're using a placeholder image for now.
-            // To properly handle image uploads, we would need to:
-            // 1. Upload the image to Firebase Storage first
-            // 2. Get the download URL
-            // 3. Store that URL in Firestore
-            // This would require additional functionality that's outside the current scope
+    // Animating progress value for smoother UI
+    val animatedProgress by animateFloatAsState(
+        targetValue = uploadProgress / 100f,
+        label = "uploadProgressAnimation"
+    )
+
+    // Handle form submission
+    val onSubmit: Function0<Unit> = {
+        if (isFormValid) {
+            // If image is selected, start a coroutine to upload it
+            if (selectedImageUri != null) {
+                scope.launch {
+                    val imageUrl = addRecipeViewModel.uploadImage(
+                        context,
+                        selectedImageUri!!
+                    )
+                    
+                    // Log the image URL for now
+                    imageUrl?.let {
+                        Log.d("ImageUpload", "Image uploaded. URL: $it")
+                        // We've stored the URL but we're not adding it to the recipe yet
+                        // as per the requirements
+                    }
+                    
+                    // Create and save the recipe (without the URL for now)
+                    // This remains the same as your existing code
+                    val newRecipe = Recipe(
+                        id = "",
+                        title = title,
+                        author = author,
+                        imageUrl = R.drawable.placeholder_image, // Still using placeholder
+                        categories = selectedCategories,
+                        description = description,
+                        cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
+                        difficulty = difficulty,
+                        calories = if (calories.isNotBlank()) "${calories} cal" else "",
+                        ingredients = ingredients,
+                        instructions = if (instructions.isNotBlank()) {
+                            instructions.split("\n")
+                        } else {
+                            listOf("No instructions provided")
+                        },
+                        cookTime = cookingTime.toIntOrNull() ?: 30,
+                        servings = servingsCount.toIntOrNull() ?: 4,
+                        category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
+                        createdBy = currentUser?.email ?: "anonymous"
+                    )
+                    
+                    addRecipeViewModel.saveRecipe(newRecipe) { savedRecipe ->
+                        onRecipeAdded(savedRecipe)
+                    }
+                }
+            } else {
+                // No image selected, just save the recipe as before
+                val newRecipe = Recipe(
+                    id = "",
+                    title = title,
+                    author = author,
+                    imageUrl = R.drawable.placeholder_image, // Still using placeholder
+                    categories = selectedCategories,
+                    description = description,
+                    cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
+                    difficulty = difficulty,
+                    calories = if (calories.isNotBlank()) "${calories} cal" else "",
+                    ingredients = ingredients,
+                    instructions = if (instructions.isNotBlank()) {
+                        instructions.split("\n")
+                    } else {
+                        listOf("No instructions provided")
+                    },
+                    cookTime = cookingTime.toIntOrNull() ?: 30,
+                    servings = servingsCount.toIntOrNull() ?: 4,
+                    category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
+                    createdBy = currentUser?.email ?: "anonymous"
+                )
+                
+                addRecipeViewModel.saveRecipe(newRecipe) { savedRecipe ->
+                    onRecipeAdded(savedRecipe)
+                }
+            }
         } else {
             // Show validation errors
             showErrors = true
@@ -550,13 +584,31 @@ fun AddRecipeScreen(
                     }
                 }
                 
-                // Show error if validation failed
-                if (imageErrorMessage != null) {
+                // Show upload progress when uploading
+                if (uploadState is UploadState.Loading) {
+                    Column(modifier = Modifier.padding(top = 8.dp)) {
+                        Text(
+                            text = "Uploading image: $uploadProgress%",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        LinearProgressIndicator(
+                            progress = animatedProgress,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            color = MaterialTheme.colorScheme.primary,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
+                }
+                
+                // Show error if upload failed
+                if (uploadState is UploadState.Error) {
                     Text(
-                        text = imageErrorMessage!!,
+                        text = "Upload failed: ${(uploadState as UploadState.Error).message}",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp)
+                        modifier = Modifier.padding(top = 8.dp)
                     )
                 }
             }
