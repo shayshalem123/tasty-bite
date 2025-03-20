@@ -379,7 +379,6 @@ fun AddRecipeScreen(
                     readOnly = true,
                     label = { Text("Difficulty") },
                     placeholder = { Text("Select difficulty") },
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .menuAnchor()
