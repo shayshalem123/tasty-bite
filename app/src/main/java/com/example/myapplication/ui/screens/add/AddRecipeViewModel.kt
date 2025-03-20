@@ -48,99 +48,40 @@ class AddRecipeViewModel(private val context: Context) : ViewModel() {
         _saveState.value = SaveState.Error(message)
     }
     
-    fun saveRecipe(recipe: Recipe, onSuccess: (Recipe) -> Unit) {
+    /**
+     * Saves a recipe with an image upload
+     * Image must be provided as it's a required field
+     *
+     * @param recipe The recipe object to save
+     * @param imageUri The URI of the image to upload (required)
+     * @param onSuccess Callback called when recipe is saved successfully
+     */
+    fun saveRecipe(recipe: Recipe, imageUri: Uri, onSuccess: (Recipe) -> Unit) {
         viewModelScope.launch {
             try {
-                Log.d(TAG, "Starting recipe save for: ${recipe.title}")
-                _debug.value = "Saving recipe to Firebase..."
                 _saveState.value = SaveState.Saving
+                _debug.value = "Saving recipe to Firebase..."
                 
-                // Generate a unique ID if one doesn't exist
-                val recipeId = if (recipe.id.isNullOrEmpty()) {
-                    UUID.randomUUID().toString()
-                } else {
-                    recipe.id
-                }
-                
-                // 1. Process image: If imageUrl is a URI, upload it to Storage first
-                var finalImageUrl = recipe.imageUrl
-                if (finalImageUrl.startsWith("content://")) {
-                    _debug.value = "Uploading image to Firebase Storage..."
-                    try {
-                        val uri = Uri.parse(finalImageUrl)
-                        finalImageUrl = storageService.uploadImage(
-                            context = context,
-                            imageUri = uri,
-                            onProgress = { progress ->
-                                _uploadProgress.value = progress
-                            }
-                        ).fold(
-                            onSuccess = { url -> 
-                                _debug.value = "Image uploaded successfully"
-                                url 
-                            },
-                            onFailure = { error ->
-                                Log.e(TAG, "Failed to upload image", error)
-                                _debug.value = "Image upload failed, using original URL"
-                                finalImageUrl
-                            }
-                        )
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error uploading image", e)
-                        _debug.value = "Error uploading image: ${e.message}"
-                        // Continue with the original URL if upload fails
+                firestoreService.saveRecipeWithImage(
+                    recipe = recipe,
+                    imageUri = imageUri,
+                    context = context,
+                    onProgressUpdate = { progress ->
+                        _uploadProgress.value = progress
                     }
-                }
-                
-                // 2. Now save the complete recipe data to Firestore
-                val recipeWithId = recipe.copy(id = recipeId, imageUrl = finalImageUrl)
-                
-                val db = Firebase.firestore
-                
-                // Convert ingredients to a format Firestore can store
-                val ingredientsData = recipeWithId.ingredients?.map { ingredient ->
-                    mapOf(
-                        "name" to ingredient.name,
-                        "amount" to ingredient.amount,
-                        "imageUrl" to (ingredient.imageUrl ?: 0).toString()
-                    )
-                } ?: listOf()
-                
-                // Create a map of the recipe data
-                val recipeData = hashMapOf(
-                    "id" to recipeId,
-                    "title" to recipeWithId.title,
-                    "author" to recipeWithId.author,
-                    "imageUrl" to finalImageUrl,
-                    "description" to (recipeWithId.description ?: ""),
-                    "cookingTime" to (recipeWithId.cookingTime ?: ""),
-                    "difficulty" to (recipeWithId.difficulty ?: ""),
-                    "calories" to (recipeWithId.calories ?: ""),
-                    "ingredients" to ingredientsData,
-                    "categories" to (recipeWithId.categories ?: if (recipeWithId.category.isNotEmpty()) listOf(recipeWithId.category) else listOf()),
-                    "instructions" to (recipeWithId.instructions ?: listOf<String>()),
-                    "cookTime" to recipeWithId.cookTime,
-                    "servings" to recipeWithId.servings,
-                    "category" to recipeWithId.category,
-                    "isFavorite" to recipeWithId.isFavorite,
-                    "createdBy" to recipeWithId.createdBy,
-                    "createdAt" to System.currentTimeMillis()
+                ).fold(
+                    onSuccess = { savedRecipe ->
+                        _saveState.value = SaveState.Success
+                        _debug.value = "Recipe saved successfully with ID: ${savedRecipe.id}"
+                        Log.d(TAG, "Recipe saved successfully with ID: ${savedRecipe.id}")
+                        onSuccess(savedRecipe)
+                    },
+                    onFailure = { error ->
+                        Log.e(TAG, "Failed to save recipe", error)
+                        _debug.value = "Failed to save recipe: ${error.message}"
+                        _saveState.value = SaveState.Error(error.message ?: "Failed to save recipe")
+                    }
                 )
-                
-                try {
-                    _debug.value = "Saving recipe to Firestore..."
-                    // Save to the "recipes" collection
-                    db.collection("recipes").document(recipeId).set(recipeData).await()
-                    
-                    _saveState.value = SaveState.Success
-                    _debug.value = "Recipe saved successfully with ID: $recipeId"
-                    Log.d(TAG, "Recipe saved successfully with ID: $recipeId")
-                    onSuccess(recipeWithId)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to save recipe to Firestore", e)
-                    _debug.value = "Failed to save recipe: ${e.message}"
-                    _saveState.value = SaveState.Error(e.message ?: "Failed to save recipe")
-                }
             } catch (e: Exception) {
                 Log.e(TAG, "Unexpected error saving recipe", e)
                 _debug.value = "Unexpected error: ${e.message}"
@@ -160,38 +101,6 @@ class AddRecipeViewModel(private val context: Context) : ViewModel() {
                     _debug.value = "Storage connection failed: ${error.message}"
                 }
         }
-    }
-
-    suspend fun uploadImage(context: Context, imageUri: Uri): String? {
-        _uploadState.value = UploadState.Loading
-        _uploadProgress.value = 0
-        
-        try {
-            storageService.uploadImage(
-                context = context,
-                imageUri = imageUri,
-                onProgress = { progress ->
-                    _uploadProgress.value = progress
-                }
-            ).fold(
-                onSuccess = { downloadUrl ->
-                    _uploadState.value = UploadState.Success(downloadUrl)
-                    return downloadUrl
-                },
-                onFailure = { exception ->
-                    Log.e(TAG, "Image upload failed", exception)
-                    _uploadState.value = UploadState.Error(exception.message ?: "Unknown error")
-                    return null
-                }
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "Exception during image upload", e)
-            _uploadState.value = UploadState.Error("Upload failed: ${e.message ?: "Unknown error"}")
-            return null
-        }
-        
-        // This is a fallback in case something goes wrong with the fold operation
-        return null
     }
 
     fun cancelUpload() {

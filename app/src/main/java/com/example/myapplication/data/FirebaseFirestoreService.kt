@@ -1,42 +1,48 @@
 package com.example.myapplication.data
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.models.Ingredient
-import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 /**
  * Service for managing recipes in Firebase Firestore database
- * Using KTX syntax for cleaner Kotlin integration
  */
 class FirebaseFirestoreService {
     private val TAG = "FirebaseFirestoreService"
     
-    // Initialize Firestore with KTX syntax
-    private val db by lazy { 
-        try {
-            Firebase.firestore("tasty-bite")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error initializing Firestore", e)
-            throw e
-        }
-    }
-
-    // Reference to recipes collection
-    private val recipesCollection by lazy { db.collection("recipes") }
+    // Initialize Firestore - simple direct initialization, no lazy loading
+    private val db = FirebaseFirestore.getInstance("tasty-bite")
     
+    // Reference to recipes collection
+    private val recipesCollection = db.collection("recipes")
+    
+    // Reference to Firebase Storage Service
+    private val storageService = FirebaseStorageService()
+
     /**
-     * Saves a recipe to Firestore database using coroutines
-     * @param recipe The recipe to save
-     * @param storageUrl Optional URL to the recipe's storage JSON (if available)
-     * @return Result containing the recipe ID or error
+     * Saves a recipe to Firestore with image upload handling
+     * The image is required for creating a recipe
+     * 
+     * @param recipe The recipe to save (with basic data)
+     * @param imageUri URI of the image to upload (required)
+     * @param context Android context for image upload operations
+     * @param onProgressUpdate Callback for image upload progress
+     * @return Result containing the saved recipe or error
      */
-    suspend fun saveRecipe(recipe: Recipe, storageUrl: String? = null): Result<String> {
+    suspend fun saveRecipeWithImage(
+        recipe: Recipe, 
+        imageUri: Uri, 
+        context: Context,
+        onProgressUpdate: (Int) -> Unit = {}
+    ): Result<Recipe> {
         return try {
-            Log.d(TAG, "Saving recipe to Firestore: ${recipe.title}")
+            Log.d(TAG, "Starting recipe save with image for: ${recipe.title}")
             
             // Generate a unique ID if one doesn't exist
             val recipeId = if (recipe.id.isBlank()) {
@@ -44,6 +50,26 @@ class FirebaseFirestoreService {
             } else {
                 recipe.id
             }
+            
+            // Step 1: Upload image (required)
+            Log.d(TAG, "Uploading image for recipe")
+            val imageUploadResult = storageService.uploadImage(
+                context = context,
+                imageUri = imageUri,
+                onProgress = onProgressUpdate
+            )
+            
+            // Handle image upload result
+            val imageUrl = imageUploadResult.fold(
+                onSuccess = { url ->
+                    Log.d(TAG, "Image uploaded successfully: $url")
+                    url
+                },
+                onFailure = { error ->
+                    Log.e(TAG, "Failed to upload image", error)
+                    return Result.failure(error)
+                }
+            )
             
             // Convert ingredients to a format Firestore can store
             val ingredientsData = recipe.ingredients?.map { ingredient ->
@@ -54,12 +80,12 @@ class FirebaseFirestoreService {
                 )
             } ?: listOf()
             
-            // Create a map of the recipe data
+            // Create a map of the recipe data with the new image URL
             val recipeData = hashMapOf(
                 "id" to recipeId,
                 "title" to recipe.title,
                 "author" to recipe.author,
-                "imageUrl" to recipe.imageUrl.toString(),
+                "imageUrl" to imageUrl,
                 "description" to (recipe.description ?: ""),
                 "cookingTime" to (recipe.cookingTime ?: ""),
                 "difficulty" to (recipe.difficulty ?: ""),
@@ -72,20 +98,23 @@ class FirebaseFirestoreService {
                 "category" to recipe.category,
                 "isFavorite" to recipe.isFavorite,
                 "createdBy" to recipe.createdBy,
-                "createdAt" to System.currentTimeMillis(),
-                "storageUrl" to (storageUrl ?: "")
+                "createdAt" to System.currentTimeMillis()
             )
-
+            
+            // Save to Firestore
             recipesCollection.document(recipeId).set(recipeData).await()
-
-            Log.d(TAG, "Recipe saved successfully to Firestore with ID: $recipeId")
-            Result.success(recipeId)
+            
+            // Return the updated recipe with new ID and image URL
+            val savedRecipe = recipe.copy(id = recipeId, imageUrl = imageUrl)
+            Log.d(TAG, "Recipe saved successfully with ID: $recipeId")
+            
+            Result.success(savedRecipe)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to save recipe to Firestore", e)
             Result.failure(e)
         }
     }
-    
+
     /**
      * Get all recipes from Firestore
      * @return Result containing a list of recipes or error

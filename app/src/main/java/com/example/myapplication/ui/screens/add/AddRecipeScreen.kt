@@ -199,77 +199,46 @@ fun AddRecipeScreen(
         if (isFormValid) {
             // Reset any previous errors
             addRecipeViewModel.resetSaveState()
-            val db = Firebase.firestore("tasty-bite")
-
-            // Since image is now required, we can simplify the submission logic
-            scope.launch {
-                try {
-                    Log.d("AddRecipeScreen", "Starting recipe submission")
-                    addRecipeViewModel.setSaving()
-
-                    val imageUrl = addRecipeViewModel.uploadImage(
-                        context,
-                        selectedImageUri!!
-                    )
-
-                    // Check if image upload was successful
-                    if (imageUrl == null) {
-                        // Image upload failed
-                        addRecipeViewModel.setError("Failed to upload image")
-                        return@launch
-                    }
-
-                    imageUrl.let {
-                        Log.d("ImageUpload", "Image uploaded. URL: $it")
-                    }
-                    // Generate UUID for the recipe
-                    val recipeId = UUID.randomUUID().toString()
-                    Log.d("AddRecipeScreen", "Recipe ID: $recipeId")
-                    val newRecipe = Recipe(
-                        id = recipeId,
-                        title = title,
-                        author = author,
-                        imageUrl = imageUrl, // Use the actual image URL from Cloud Storage
-                        categories = selectedCategories,
-                        description = description,
-                        cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
-                        difficulty = difficulty,
-                        calories = if (calories.isNotBlank()) "${calories} cal" else "",
-                        ingredients = ingredients,
-                        instructions = if (instructions.isNotBlank()) {
-                            instructions.split("\n")
-                        } else {
-                            listOf("No instructions provided")
-                        },
-                        cookTime = cookingTime.toIntOrNull() ?: 30,
-                        servings = servingsCount.toIntOrNull() ?: 4,
-                        category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
-                        createdBy = currentUser?.email ?: "anonymous"
-                    )
-                    // save the recipe in firebase in recipes collection
-                    db.collection("recipes").add(newRecipe)
-                        .addOnSuccessListener { documentReference ->
-                            Log.d(
-                                "AddRecipeScreen",
-                                "Document added with ID: ${documentReference.id}"
-                            )
-                        }
-                        .addOnFailureListener { e ->
-                            Log.d("AddRecipeScreen", "Error adding document: $e")
-                        }
-                    Log.d("AddRecipeScreen", "Finished recipe submission")
+            
+            // Create the recipe object
+            val newRecipe = Recipe(
+                id = "",  // This will be set by the service
+                title = title,
+                author = author,
+                imageUrl = "",  // This will be set by the service after upload
+                categories = selectedCategories,
+                description = description,
+                cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
+                difficulty = difficulty,
+                calories = if (calories.isNotBlank()) "${calories} cal" else "",
+                ingredients = ingredients,
+                instructions = if (instructions.isNotBlank()) {
+                    instructions.split("\n")
+                } else {
+                    listOf("No instructions provided")
+                },
+                cookTime = cookingTime.toIntOrNull() ?: 30,
+                servings = servingsCount.toIntOrNull() ?: 4,
+                category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
+                createdBy = currentUser?.email ?: "anonymous"
+            )
+            
+            // Let the ViewModel handle the save operation, including image upload
+            addRecipeViewModel.saveRecipe(
+                recipe = newRecipe,
+                imageUri = selectedImageUri!!,  // Non-null assertion because isFormValid ensures it's not null
+                onSuccess = { savedRecipe ->
+                    // Handle successful save
+                    onRecipeAdded(savedRecipe)
                     onBackClick()
-//                    }
-                } catch (e: Exception) {
-                    Log.e("AddRecipeScreen", "Error in recipe submission", e)
-                    addRecipeViewModel.setError("Error: ${e.message ?: "Unknown error"}")
                 }
-            }
+            )
         } else {
-            // Show validation errors and ensure we're not in loading state
+            // Show validation errors
             showErrors = true
             showErrorSnackbar = true
-            // Reset save state if it's in loading state to prevent showing loading indicator
+            
+            // Reset save state if it's in loading state
             if (saveState is SaveState.Saving) {
                 addRecipeViewModel.resetSaveState()
             }
