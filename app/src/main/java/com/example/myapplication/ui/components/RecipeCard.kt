@@ -32,6 +32,7 @@ import com.example.myapplication.models.Recipe
 import com.example.myapplication.R
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
@@ -52,7 +53,7 @@ fun RecipeCard(
         Column (
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .padding(top = 8.dp)
+                .padding(vertical = 8.dp, horizontal = 8.dp)
         ) {
             // Load image from URL using Coil
             SubcomposeAsyncImage(
@@ -63,7 +64,8 @@ fun RecipeCard(
                 contentDescription = recipe.title,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
+                    .height(120.dp)
+                    .clip(RoundedCornerShape(12.dp)),
                 contentScale = ContentScale.Crop,
                 loading = {
                     Box(
@@ -85,7 +87,8 @@ fun RecipeCard(
                         contentDescription = recipe.title,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(120.dp),
+                            .height(120.dp)
+                            .clip(RoundedCornerShape(12.dp)),
                         contentScale = ContentScale.Crop
                     )
                 }
@@ -132,7 +135,8 @@ fun SearchResultRecipeItem(recipe: Recipe) {
                 contentDescription = recipe.title,
                 modifier = Modifier
                     .width(100.dp)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(8.dp)),
                 contentScale = ContentScale.Crop,
                 loading = {
                     Box(
@@ -154,7 +158,8 @@ fun SearchResultRecipeItem(recipe: Recipe) {
                         contentDescription = recipe.title,
                         modifier = Modifier
                             .width(100.dp)
-                            .fillMaxHeight(),
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(8.dp)),
                         contentScale = ContentScale.Crop
                     )
                 }
