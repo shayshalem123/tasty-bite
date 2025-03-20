@@ -18,13 +18,13 @@ class FirebaseFirestoreService {
     // Initialize Firestore with KTX syntax
     private val db by lazy { 
         try {
-            Firebase.firestore
+            Firebase.firestore("tasty-bite")
         } catch (e: Exception) {
             Log.e(TAG, "Error initializing Firestore", e)
             throw e
         }
     }
-    
+
     // Reference to recipes collection
     private val recipesCollection by lazy { db.collection("recipes") }
     
@@ -93,6 +93,8 @@ class FirebaseFirestoreService {
     suspend fun getAllRecipes(): Result<List<Recipe>> {
         return try {
             Log.d(TAG, "Fetching all recipes from Firestore")
+            db.clearPersistence() // Clears all cached data
+
             
             // Return empty list if there's an issue with connectivity
             try {
