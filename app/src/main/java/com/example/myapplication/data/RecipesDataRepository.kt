@@ -131,4 +131,65 @@ class RecipesDataRepository {
             Result.success(emptyList())  // Return empty list instead of failure
         }
     }
+    
+    suspend fun getUserRecipes(userEmail: String): Result<List<Recipe>> {
+        return try {
+            Log.d(TAG, "Fetching recipes for user: $userEmail")
+            
+            try {
+                val snapshot = recipesCollection
+                    .whereEqualTo("createdBy", userEmail)
+                    .get()
+                    .await()
+                
+                val recipes = snapshot.documents.mapNotNull { doc ->
+                    try {
+                        val data = doc.data ?: return@mapNotNull null
+                        
+                        // Extract ingredients
+                        val ingredientsList = (data["ingredients"] as? List<Map<String, Any>>)?.map { ingredientData ->
+                            val name = ingredientData["name"] as? String ?: ""
+                            val amount = ingredientData["amount"] as? String ?: ""
+                            val imageUrl = (ingredientData["imageUrl"] as? String)?.toIntOrNull() ?: 0
+                            
+                            Ingredient(name, amount, imageUrl)
+                        } ?: listOf()
+                        
+                        // Extract basic fields
+                        Recipe(
+                            id = data["id"] as? String ?: doc.id,
+                            title = data["title"] as? String ?: "",
+                            author = data["author"] as? String ?: "",
+                            imageUrl = data["imageUrl"] as? String ?: "",
+                            description = data["description"] as? String,
+                            cookingTime = data["cookingTime"] as? String,
+                            difficulty = data["difficulty"] as? String,
+                            calories = data["calories"] as? String,
+                            ingredients = ingredientsList,
+                            instructions = (data["instructions"] as? List<*>)?.filterIsInstance<String>() ?: listOf(),
+                            cookTime = (data["cookTime"] as? Number)?.toInt() ?: 0,
+                            servings = (data["servings"] as? Number)?.toInt() ?: 0,
+                            category = data["category"] as? String ?: "",
+                            isFavorite = data["isFavorite"] as? Boolean ?: false,
+                            createdBy = data["createdBy"] as? String ?: "",
+                            createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0
+                        )
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing recipe document: ${doc.id}", e)
+                        null
+                    }
+                }
+
+                Log.d(TAG, "Successfully fetched ${recipes.size} recipes for user: $userEmail")
+                Result.success(recipes)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in data fetch for user recipes, returning empty list", e)
+                Result.success(emptyList())
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch user recipes from Firestore", e)
+            Result.success(emptyList())
+        }
+    }
 } 
