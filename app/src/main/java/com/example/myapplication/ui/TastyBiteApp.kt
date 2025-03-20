@@ -24,6 +24,7 @@ import com.example.myapplication.ui.screens.auth.RegisterScreen
 import com.example.myapplication.ui.screens.detail.RecipeDetailScreen
 import com.example.myapplication.ui.screens.home.HomeScreen
 import com.example.myapplication.ui.screens.add.AddRecipeViewModel
+import com.example.myapplication.ui.screens.home.AllRecipesScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -77,6 +78,9 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     
     // State to track if we're adding a new recipe
     var isAddingRecipe by remember { mutableStateOf(false) }
+    
+    // State to track if we're viewing all recipes
+    var isViewingAllRecipes by remember { mutableStateOf(false) }
     
     // Get the current user data
     val currentUser by authViewModel.currentUser.collectAsState()
@@ -165,6 +169,17 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                     onBackClick = { selectedRecipe = null }
                 )
             }
+            // Show all recipes screen
+            isViewingAllRecipes -> {
+                AllRecipesScreen(
+                    recipes = allRecipes,
+                    onRecipeClick = { recipe -> 
+                        selectedRecipe = recipe
+                        isViewingAllRecipes = false
+                    },
+                    onBackClick = { isViewingAllRecipes = false }
+                )
+            }
             // Show home screen
             else -> {
                 Scaffold(
@@ -245,7 +260,8 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                             modifier = Modifier.padding(paddingValues),
                             onRecipeClick = { recipe -> selectedRecipe = recipe },
                             recipes = allRecipes,
-                            userName = currentUser?.displayName ?: "User"
+                            userName = currentUser?.displayName ?: "User",
+                            onSeeAllRecipesClick = { isViewingAllRecipes = true }
                         )
                     }
                 }

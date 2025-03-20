@@ -19,10 +19,14 @@ import com.example.myapplication.ui.components.SectionHeader
 fun RecommendationsSection(
     title: String = "Recipes",
     recipes: List<Recipe> = emptyList(),
-    onRecipeClick: (Recipe) -> Unit = {}
+    onRecipeClick: (Recipe) -> Unit = {},
+    onSeeAllClick: () -> Unit = {}
 ) {
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        SectionHeader(title = title)
+        SectionHeader(
+            title = title,
+            onSeeAllClick = onSeeAllClick
+        )
         
         if (recipes.isEmpty()) {
             // Show empty state message

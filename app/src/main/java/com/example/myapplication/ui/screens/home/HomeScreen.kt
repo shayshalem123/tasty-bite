@@ -22,7 +22,8 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onRecipeClick: (Recipe) -> Unit = {},
     recipes: List<Recipe> = emptyList(),
-    userName: String = "User"
+    userName: String = "User",
+    onSeeAllRecipesClick: () -> Unit = {}
 ) {
     // Search state
     var searchQuery = remember { mutableStateOf("") }
@@ -109,7 +110,8 @@ fun HomeScreen(
             RecommendationsSection(
                 title = "All Recipes", 
                 recipes = recipes,
-                onRecipeClick = onRecipeClick
+                onRecipeClick = onRecipeClick,
+                onSeeAllClick = onSeeAllRecipesClick
             )
         }
     }
