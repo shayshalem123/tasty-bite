@@ -180,7 +180,9 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                                 defaultElevation = 4.dp,
                                 pressedElevation = 8.dp
                             ),
-                            modifier = Modifier.size(56.dp)
+                            modifier = Modifier
+                                .size(56.dp)
+                                .offset(y = 40.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
