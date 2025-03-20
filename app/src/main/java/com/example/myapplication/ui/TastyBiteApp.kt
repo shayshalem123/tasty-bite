@@ -14,8 +14,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.auth.AuthState
 import com.example.myapplication.auth.AuthViewModel
-import com.example.myapplication.data.FirebaseFirestoreService
-import com.example.myapplication.data.FirebaseStorageService
+import com.example.myapplication.data.RecipesDataRepository
+import com.example.myapplication.data.RecipesImageRepository
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.BottomNavigationBar
 import com.example.myapplication.ui.screens.add.AddRecipeScreen
@@ -84,10 +84,10 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     val errorMessage = remember { mutableStateOf<String?>(null) }
     
     // Create instance of Firestore service
-    val firestoreService = remember { FirebaseFirestoreService() }
+    val firestoreService = remember { RecipesDataRepository() }
     
     // Create instance of Firebase Storage service
-    val storageService = remember { FirebaseStorageService() }
+    val storageService = remember { RecipesImageRepository() }
     
     // Create a coroutine scope here - at the composable function level
     val coroutineScope = rememberCoroutineScope()

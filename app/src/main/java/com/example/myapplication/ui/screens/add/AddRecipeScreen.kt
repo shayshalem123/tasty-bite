@@ -3,7 +3,6 @@ package com.example.myapplication.ui.screens.add
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.myapplication.R
 import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.data.categories
 import com.example.myapplication.models.Ingredient
@@ -70,13 +68,6 @@ import com.example.myapplication.ui.screens.add.components.FormTextField
 import com.example.myapplication.ui.screens.add.components.IngredientsList
 import com.example.myapplication.ui.screens.add.components.NumericFormField
 import kotlinx.coroutines.launch
-import android.util.Log
-import com.example.myapplication.data.FirebaseRecipeService
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
-//import com.google.firebase.referencecode.database.kotlin.models.Post
-//import com.google.firebase.referencecode.database.models.User
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,26 +90,19 @@ fun AddRecipeScreen(
     var ingredients by remember { mutableStateOf<List<Ingredient>>(emptyList()) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // New fields for the required parameters
-    var primaryCategory by remember { mutableStateOf("") }
     var servingsCount by remember { mutableStateOf("4") }
     var instructions by remember { mutableStateOf("") }
 
-    // Validation state
     var showErrors by remember { mutableStateOf(false) }
     var showErrorSnackbar by remember { mutableStateOf(false) }
 
-    // Form is valid when these required fields are filled
     val isFormValid =
         title.isNotBlank() && author.isNotBlank() && ingredients.isNotEmpty() && selectedImageUri != null
 
-    // Remember the snackbar host state
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Create a coroutine scope
     val scope = rememberCoroutineScope()
 
-    // Effect to show snackbar when showErrorSnackbar is true
     LaunchedEffect(showErrorSnackbar) {
         if (showErrorSnackbar) {
             scope.launch {
@@ -174,12 +158,8 @@ fun AddRecipeScreen(
         }
     }
 
-    // Keep track of the selected image URI for future implementation
-    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
-
     // Collect upload state and progress
     val uploadState by addRecipeViewModel.uploadState.collectAsState()
-    val uploadProgress by addRecipeViewModel.uploadProgress.collectAsState()
 
     // Effect to show image error message when upload fails
     LaunchedEffect(uploadState) {
@@ -187,12 +167,6 @@ fun AddRecipeScreen(
             imageErrorMessage = (uploadState as UploadState.Error).message
         }
     }
-
-    // Animating progress value for smoother UI
-    val animatedProgress by animateFloatAsState(
-        targetValue = uploadProgress / 100f,
-        label = "uploadProgressAnimation"
-    )
 
     // Handle form submission
     val onSubmit: Function0<Unit> = {
@@ -594,24 +568,6 @@ fun AddRecipeScreen(
                             contentDescription = "Recipe image preview",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-
-                // Show upload progress when uploading
-                if (uploadState is UploadState.Loading) {
-                    Column(modifier = Modifier.padding(top = 8.dp)) {
-                        Text(
-                            text = "Uploading image: $uploadProgress%",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        LinearProgressIndicator(
-                            progress = animatedProgress,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     }
                 }
