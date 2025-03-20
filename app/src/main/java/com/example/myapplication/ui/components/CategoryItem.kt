@@ -30,7 +30,7 @@ fun CategoryItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .padding(horizontal = 6.dp, vertical = 4.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp)
             .clip(
                 RoundedCornerShape(10.dp)
             )
@@ -56,7 +56,7 @@ fun CategoryItem(
                 painter = painterResource(id = category.icon),
                 contentDescription = category.name,
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(12.dp)
                     .fillMaxSize(),
                 contentScale = ContentScale.Fit
             )
