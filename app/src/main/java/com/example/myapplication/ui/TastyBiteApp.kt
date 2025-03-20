@@ -78,6 +78,9 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     // State to track if we're adding a new recipe
     var isAddingRecipe by remember { mutableStateOf(false) }
     
+    // Get the current user data
+    val currentUser by authViewModel.currentUser.collectAsState()
+    
     // State to hold all recipes from Firestore
     val allRecipes = remember { mutableStateListOf<Recipe>() }
     val isLoading = remember { mutableStateOf(true) }
@@ -241,7 +244,8 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                         HomeScreen(
                             modifier = Modifier.padding(paddingValues),
                             onRecipeClick = { recipe -> selectedRecipe = recipe },
-                            recipes = allRecipes
+                            recipes = allRecipes,
+                            userName = currentUser?.displayName ?: "User"
                         )
                     }
                 }

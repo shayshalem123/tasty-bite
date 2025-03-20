@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.example.myapplication.R
 
 @Composable
-fun HomeHeader() {
+fun HomeHeader(name: String = "User") {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -31,7 +31,7 @@ fun HomeHeader() {
     ) {
         Column {
             Text(
-                text = "Hello, Anne",
+                text = "Hello, $name",
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )

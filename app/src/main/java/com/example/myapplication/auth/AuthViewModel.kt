@@ -1,5 +1,6 @@
 package com.example.myapplication.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -26,6 +27,7 @@ class AuthViewModel : ViewModel() {
                 email = firebaseUser.email ?: "",
                 displayName = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: ""
             )
+            Log.d("AuthViewModel", "Current user: ${_currentUser.value}")
             _authState.value = AuthState.Authenticated
         } else {
             _authState.value = AuthState.Unauthenticated
@@ -56,7 +58,7 @@ class AuthViewModel : ViewModel() {
         }
     }
     
-    fun register(email: String, password: String) {
+    fun register(name: String, email: String, password: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
             
@@ -66,9 +68,16 @@ class AuthViewModel : ViewModel() {
                 val user = result.user
                 
                 if (user != null) {
+                    // Update the user's display name
+                    val profileUpdates = com.google.firebase.auth.UserProfileChangeRequest.Builder()
+                        .setDisplayName(name)
+                        .build()
+                    
+                    user.updateProfile(profileUpdates).await()
+                    
                     _currentUser.value = UserData(
                         email = user.email ?: "",
-                        displayName = user.displayName ?: user.email?.substringBefore("@") ?: ""
+                        displayName = name
                     )
                     _authState.value = AuthState.Authenticated
                 } else {
