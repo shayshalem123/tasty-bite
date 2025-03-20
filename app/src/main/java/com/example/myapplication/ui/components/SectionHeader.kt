@@ -1,5 +1,6 @@
 package com.example.myapplication.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,7 +15,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun SectionHeader(title: String) {
+fun SectionHeader(
+    title: String,
+    onSeeAllClick: () -> Unit = {}
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -30,7 +34,10 @@ fun SectionHeader(title: String) {
         Text(
             text = "See all",
             color = MaterialTheme.colorScheme.primary,
-            fontSize = 14.sp
+            fontSize = 14.sp,
+            modifier = Modifier
+                .clickable(onClick = onSeeAllClick)
+                .padding(4.dp) // Add padding for better touch target
         )
     }
 } 
