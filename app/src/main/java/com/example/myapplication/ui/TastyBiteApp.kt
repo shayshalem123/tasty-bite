@@ -25,6 +25,8 @@ import com.example.myapplication.ui.screens.detail.RecipeDetailScreen
 import com.example.myapplication.ui.screens.home.HomeScreen
 import com.example.myapplication.ui.screens.add.AddRecipeViewModel
 import com.example.myapplication.ui.screens.home.AllRecipesScreen
+import com.example.myapplication.ui.screens.profile.EditProfileScreen
+import com.example.myapplication.ui.screens.profile.ProfileScreen
 import com.example.myapplication.ui.screens.search.SearchScreen
 import kotlinx.coroutines.launch
 
@@ -85,6 +87,12 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     
     // State to track if we're searching recipes
     var isSearching by remember { mutableStateOf(false) }
+    
+    // State to track if we're viewing profile
+    var isViewingProfile by remember { mutableStateOf(false) }
+    
+    // State to track if we're editing profile
+    var isEditingProfile by remember { mutableStateOf(false) }
     
     // Get the current user data
     val currentUser by authViewModel.currentUser.collectAsState()
@@ -152,6 +160,28 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     
     Box(modifier = Modifier.fillMaxSize()) {
         when {
+            // Show profile edit screen
+            isEditingProfile -> {
+                EditProfileScreen(
+                    authViewModel = authViewModel,
+                    onBackClick = { isEditingProfile = false },
+                    onProfileUpdated = { 
+                        isEditingProfile = false
+                    }
+                )
+            }
+            // Show profile screen
+            isViewingProfile -> {
+                ProfileScreen(
+                    authViewModel = authViewModel,
+                    onBackClick = { isViewingProfile = false },
+                    onEditProfileClick = { isEditingProfile = true },
+                    onRecipeClick = { recipe ->
+                        selectedRecipe = recipe
+                        isViewingProfile = false
+                    }
+                )
+            }
             // Show search screen
             isSearching -> {
                 SearchScreen(
@@ -202,7 +232,8 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                         BottomNavigationBar(
                             onLogoutClick = { authViewModel.signOut() },
                             onSearchClick = { isSearching = true },
-                            onHomeClick = { /* Already on home */ }
+                            onHomeClick = { /* Already on home */ },
+                            onProfileClick = { isViewingProfile = true }
                         ) 
                     },
                     floatingActionButton = {

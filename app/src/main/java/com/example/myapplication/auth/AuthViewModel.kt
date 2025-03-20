@@ -97,6 +97,16 @@ class AuthViewModel : ViewModel() {
         _authState.value = AuthState.Unauthenticated
     }
     
+    fun refreshUserData() {
+        val firebaseUser = firebaseAuth.currentUser
+        if (firebaseUser != null) {
+            _currentUser.value = UserData(
+                email = firebaseUser.email ?: "",
+                displayName = firebaseUser.displayName ?: firebaseUser.email?.substringBefore("@") ?: ""
+            )
+        }
+    }
+    
     // User data class for Firebase auth
     data class UserData(val email: String, val displayName: String)
 }
