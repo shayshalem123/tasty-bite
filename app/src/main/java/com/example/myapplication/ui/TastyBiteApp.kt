@@ -25,6 +25,7 @@ import com.example.myapplication.ui.screens.detail.RecipeDetailScreen
 import com.example.myapplication.ui.screens.home.HomeScreen
 import com.example.myapplication.ui.screens.add.AddRecipeViewModel
 import com.example.myapplication.ui.screens.home.AllRecipesScreen
+import com.example.myapplication.ui.screens.search.SearchScreen
 import kotlinx.coroutines.launch
 
 @Composable
@@ -81,6 +82,9 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     
     // State to track if we're viewing all recipes
     var isViewingAllRecipes by remember { mutableStateOf(false) }
+    
+    // State to track if we're searching recipes
+    var isSearching by remember { mutableStateOf(false) }
     
     // Get the current user data
     val currentUser by authViewModel.currentUser.collectAsState()
@@ -148,6 +152,17 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     
     Box(modifier = Modifier.fillMaxSize()) {
         when {
+            // Show search screen
+            isSearching -> {
+                SearchScreen(
+                    recipes = allRecipes,
+                    onBackClick = { isSearching = false },
+                    onRecipeClick = { recipe ->
+                        selectedRecipe = recipe
+                        isSearching = false
+                    }
+                )
+            }
             // Show add recipe screen
             isAddingRecipe -> {
                 val context = LocalContext.current
@@ -185,7 +200,9 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                 Scaffold(
                     bottomBar = { 
                         BottomNavigationBar(
-                            onLogoutClick = { authViewModel.signOut() }
+                            onLogoutClick = { authViewModel.signOut() },
+                            onSearchClick = { isSearching = true },
+                            onHomeClick = { /* Already on home */ }
                         ) 
                     },
                     floatingActionButton = {

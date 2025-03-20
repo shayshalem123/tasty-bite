@@ -26,7 +26,10 @@ import androidx.compose.foundation.layout.Spacer
 
 @Composable
 fun BottomNavigationBar(
-    onLogoutClick: () -> Unit = {}
+    onLogoutClick: () -> Unit = {},
+    onSearchClick: () -> Unit = {},
+    onHomeClick: () -> Unit = {},
+    onProfileClick: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -57,8 +60,8 @@ fun BottomNavigationBar(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally
+                        IconButton(
+                            onClick = onHomeClick
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Home, 
@@ -70,7 +73,7 @@ fun BottomNavigationBar(
                     }
                     
                     IconButton(
-                        onClick = {},
+                        onClick = onSearchClick,
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
@@ -85,7 +88,7 @@ fun BottomNavigationBar(
                     Spacer(modifier = Modifier.weight(1f))
                     
                     IconButton(
-                        onClick = {},
+                        onClick = onProfileClick,
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
