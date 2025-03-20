@@ -17,7 +17,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun SectionHeader(
     title: String,
-    onSeeAllClick: () -> Unit = {}
+    onSeeAllClick: () -> Unit = {},
+    showSeeAll: Boolean = true
 ) {
     Row(
         modifier = Modifier
@@ -31,13 +32,15 @@ fun SectionHeader(
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold
         )
-        Text(
-            text = "See all",
-            color = MaterialTheme.colorScheme.primary,
-            fontSize = 14.sp,
-            modifier = Modifier
-                .clickable(onClick = onSeeAllClick)
-                .padding(4.dp) // Add padding for better touch target
-        )
+        if (showSeeAll) {
+            Text(
+                text = "See all",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .clickable(onClick = onSeeAllClick)
+                    .padding(4.dp) // Add padding for better touch target
+            )
+        }
     }
 } 

@@ -23,7 +23,7 @@ fun CategoriesSection(
     onCategorySelected: (Category) -> Unit
 ) {
     Column(modifier = Modifier.padding(vertical = 16.dp)) {
-        SectionHeader(title = "Categories")
+        SectionHeader(title = "Categories", showSeeAll = false)
         
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
