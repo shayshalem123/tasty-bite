@@ -65,6 +65,8 @@ fun HomeScreen(
                     true
                 }
             }
+            // Sort by createdAt in descending order (newest first)
+            .sortedByDescending { it.createdAt }
     }
     
     Column(

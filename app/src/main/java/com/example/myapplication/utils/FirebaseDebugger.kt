@@ -13,7 +13,7 @@ object FirebaseDebugger {
      */
     suspend fun testFirestoreConnection(): Boolean {
         return try {
-            val db = FirebaseFirestore.getInstance()
+            val db = FirebaseFirestore.getInstance("tasty-bite")
             val testDoc = db.collection("debug").document("connectivity_test")
             
             // Try to write
