@@ -17,10 +17,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import coil3.compose.rememberAsyncImagePainter
+import com.example.myapplication.R
 
 @Composable
 fun RecipeImageHeader(
-    imageResId: Int,
+    imageUrl: String,
     title: String,
     onBackClick: () -> Unit
 ) {
@@ -30,7 +32,8 @@ fun RecipeImageHeader(
             .height(300.dp)
     ) {
         Image(
-            painter = painterResource(id = imageResId),
+            painter = rememberAsyncImagePainter(model = imageUrl,
+                    placeholder = painterResource(id = R.drawable.placeholder_image)),
             contentDescription = title,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop

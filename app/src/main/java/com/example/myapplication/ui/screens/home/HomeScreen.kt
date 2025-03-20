@@ -8,19 +8,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.data.recommendedRecipes
 import com.example.myapplication.models.Category
 import com.example.myapplication.ui.components.SearchBar
 import com.example.myapplication.ui.screens.home.components.CategoriesSection
 import com.example.myapplication.ui.screens.home.components.HomeHeader
 import com.example.myapplication.ui.screens.home.components.RecommendationsSection
 import com.example.myapplication.models.Recipe
+import com.example.myapplication.data.categories
+import android.util.Log
 
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
     onRecipeClick: (Recipe) -> Unit = {},
-    recipes: List<Recipe> = recommendedRecipes
+    recipes: List<Recipe> = emptyList()
 ) {
     // Search state
     var searchQuery = remember { mutableStateOf("") }
@@ -41,13 +42,31 @@ fun HomeScreen(
                 }
             }
             .filter { recipe ->
-                // Apply category filter
+                // Apply category filter - check both category and categories fields
                 if (selectedCategory.value != null) {
-                    recipe.categories?.contains(selectedCategory.value?.id) ?: false
+                    val categoryId = selectedCategory.value?.id ?: ""
+                    
+                    // Check regular category field (string)
+                    val matchesSingleCategory = recipe.category.equals(categoryId, ignoreCase = true)
+                    
+                    // Check categories field (list)
+                    val matchesInCategoriesList = recipe.categories?.contains(categoryId) ?: false
+                    
+                    // Log for debugging
+                    Log.d("CategoryFilter", "Recipe: ${recipe.title}, " +
+                        "Category: ${recipe.category}, " +
+                        "Categories: ${recipe.categories}, " +
+                        "Selected: $categoryId, " +
+                        "Matches: ${matchesSingleCategory || matchesInCategoriesList}")
+                    
+                    // Return true if either matches
+                    matchesSingleCategory || matchesInCategoriesList
                 } else {
                     true
                 }
             }
+            // Sort by createdAt in descending order (newest first)
+            .sortedByDescending { it.createdAt }
     }
     
     Column(
@@ -73,7 +92,7 @@ fun HomeScreen(
             }
         )
         
-        // Always use the Recommendations layout, but with different data based on filters
+        // Show filtered recipes or all recipes
         if (searchQuery.value.isNotEmpty() || selectedCategory.value != null) {
             // Use same horizontal layout but with filtered recipes
             RecommendationsSection(
@@ -87,7 +106,7 @@ fun HomeScreen(
         } else {
             // Regular recommendations
             RecommendationsSection(
-                title = "Recommendation", 
+                title = "All Recipes", 
                 recipes = recipes,
                 onRecipeClick = onRecipeClick
             )

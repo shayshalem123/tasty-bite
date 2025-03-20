@@ -11,15 +11,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.myapplication.data.recommendedRecipes
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.RecipeCard
 import com.example.myapplication.ui.components.SectionHeader
 
 @Composable
 fun RecommendationsSection(
-    title: String = "Recommendation",
-    recipes: List<Recipe> = recommendedRecipes,
+    title: String = "Recipes",
+    recipes: List<Recipe> = emptyList(),
     onRecipeClick: (Recipe) -> Unit = {}
 ) {
     Column(modifier = Modifier.padding(vertical = 16.dp)) {

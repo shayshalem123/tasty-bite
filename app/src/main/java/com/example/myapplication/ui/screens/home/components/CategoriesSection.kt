@@ -13,6 +13,9 @@ import com.example.myapplication.models.Category
 import com.example.myapplication.ui.components.CategoryItem
 import com.example.myapplication.ui.components.SectionHeader
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
+import android.util.Log
 
 @Composable
 fun CategoriesSection(
@@ -34,5 +37,19 @@ fun CategoriesSection(
                 )
             }
         }
+        
+        // Uncomment this for testing if needed
+        /*
+        if (selectedCategory != null) {
+            Button(
+                onClick = { 
+                    Log.d("Categories", "Selected category: ${selectedCategory.id} - ${selectedCategory.name}")
+                },
+                modifier = Modifier.padding(top = 8.dp)
+            ) {
+                Text("Debug Category")
+            }
+        }
+        */
     }
 } 
