@@ -3,7 +3,6 @@ package com.example.myapplication.ui.screens.add
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.example.myapplication.R
 import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.data.categories
 import com.example.myapplication.models.Ingredient
@@ -70,13 +68,6 @@ import com.example.myapplication.ui.screens.add.components.FormTextField
 import com.example.myapplication.ui.screens.add.components.IngredientsList
 import com.example.myapplication.ui.screens.add.components.NumericFormField
 import kotlinx.coroutines.launch
-import android.util.Log
-import com.example.myapplication.data.FirebaseRecipeService
-import com.google.firebase.Firebase
-import com.google.firebase.firestore.firestore
-//import com.google.firebase.referencecode.database.kotlin.models.Post
-//import com.google.firebase.referencecode.database.models.User
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,26 +90,19 @@ fun AddRecipeScreen(
     var ingredients by remember { mutableStateOf<List<Ingredient>>(emptyList()) }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
 
-    // New fields for the required parameters
-    var primaryCategory by remember { mutableStateOf("") }
     var servingsCount by remember { mutableStateOf("4") }
     var instructions by remember { mutableStateOf("") }
 
-    // Validation state
     var showErrors by remember { mutableStateOf(false) }
     var showErrorSnackbar by remember { mutableStateOf(false) }
 
-    // Form is valid when these required fields are filled
     val isFormValid =
         title.isNotBlank() && author.isNotBlank() && ingredients.isNotEmpty() && selectedImageUri != null
 
-    // Remember the snackbar host state
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Create a coroutine scope
     val scope = rememberCoroutineScope()
 
-    // Effect to show snackbar when showErrorSnackbar is true
     LaunchedEffect(showErrorSnackbar) {
         if (showErrorSnackbar) {
             scope.launch {
@@ -174,12 +158,8 @@ fun AddRecipeScreen(
         }
     }
 
-    // Keep track of the selected image URI for future implementation
-    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
-
     // Collect upload state and progress
     val uploadState by addRecipeViewModel.uploadState.collectAsState()
-    val uploadProgress by addRecipeViewModel.uploadProgress.collectAsState()
 
     // Effect to show image error message when upload fails
     LaunchedEffect(uploadState) {
@@ -188,116 +168,53 @@ fun AddRecipeScreen(
         }
     }
 
-    // Animating progress value for smoother UI
-    val animatedProgress by animateFloatAsState(
-        targetValue = uploadProgress / 100f,
-        label = "uploadProgressAnimation"
-    )
-
     // Handle form submission
     val onSubmit: Function0<Unit> = {
         if (isFormValid) {
             // Reset any previous errors
             addRecipeViewModel.resetSaveState()
-            val db = Firebase.firestore("tasty-bite")
-
-            // Since image is now required, we can simplify the submission logic
-            scope.launch {
-                try {
-                    Log.d("AddRecipeScreen", "Starting recipe submission")
-                    addRecipeViewModel.setSaving()
-
-                    val imageUrl = addRecipeViewModel.uploadImage(
-                        context,
-                        selectedImageUri!!
-                    )
-
-                    // Check if image upload was successful
-                    if (imageUrl == null) {
-                        // Image upload failed
-                        addRecipeViewModel.setError("Failed to upload image")
-                        return@launch
-                    }
-
-                    imageUrl.let {
-                        Log.d("ImageUpload", "Image uploaded. URL: $it")
-                    }
-                    // Generate UUID for the recipe
-                    val recipeId = UUID.randomUUID().toString()
-                    Log.d("AddRecipeScreen", "Recipe ID: $recipeId")
-                    val newRecipe = Recipe(
-                        id = recipeId,
-                        title = title,
-                        author = author,
-                        imageUrl = imageUrl, // Use the actual image URL from Cloud Storage
-                        categories = selectedCategories,
-                        description = description,
-                        cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
-                        difficulty = difficulty,
-                        calories = if (calories.isNotBlank()) "${calories} cal" else "",
-                        ingredients = ingredients,
-                        instructions = if (instructions.isNotBlank()) {
-                            instructions.split("\n")
-                        } else {
-                            listOf("No instructions provided")
-                        },
-                        cookTime = cookingTime.toIntOrNull() ?: 30,
-                        servings = servingsCount.toIntOrNull() ?: 4,
-                        category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
-                        createdBy = currentUser?.email ?: "anonymous"
-                    )
-                    // save the recipe in firebase in recipes collection
-                    db.collection("recipes").add(newRecipe)
-                        .addOnSuccessListener { documentReference ->
-                            Log.d(
-                                "AddRecipeScreen",
-                                "Document added with ID: ${documentReference.id}"
-                            )
-                        }
-                        .addOnFailureListener { e ->
-                            Log.d("AddRecipeScreen", "Error adding document: $e")
-                        }
-                    Log.d("AddRecipeScreen", "Finished recipe submission")
+            
+            // Create the recipe object
+            val newRecipe = Recipe(
+                id = "",  // This will be set by the service
+                title = title,
+                author = author,
+                imageUrl = "",  // This will be set by the service after upload
+                categories = selectedCategories,
+                description = description,
+                cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
+                difficulty = difficulty,
+                calories = if (calories.isNotBlank()) "${calories} cal" else "",
+                ingredients = ingredients,
+                instructions = if (instructions.isNotBlank()) {
+                    instructions.split("\n")
+                } else {
+                    listOf("No instructions provided")
+                },
+                cookTime = cookingTime.toIntOrNull() ?: 30,
+                servings = servingsCount.toIntOrNull() ?: 4,
+                category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
+                createdBy = currentUser?.email ?: "anonymous"
+            )
+            
+            // Let the ViewModel handle the save operation, including image upload
+            addRecipeViewModel.saveRecipe(
+                recipe = newRecipe,
+                imageUri = selectedImageUri!!,  // Non-null assertion because isFormValid ensures it's not null
+                onSuccess = { savedRecipe ->
+                    // Handle successful save
+                    onRecipeAdded(savedRecipe)
                     onBackClick()
-//                    }
-                } catch (e: Exception) {
-                    Log.e("AddRecipeScreen", "Error in recipe submission", e)
-                    addRecipeViewModel.setError("Error: ${e.message ?: "Unknown error"}")
                 }
-            }
+            )
         } else {
-            // Show validation errors and ensure we're not in loading state
+            // Show validation errors
             showErrors = true
             showErrorSnackbar = true
-            // Reset save state if it's in loading state to prevent showing loading indicator
+            
+            // Reset save state if it's in loading state
             if (saveState is SaveState.Saving) {
                 addRecipeViewModel.resetSaveState()
-            }
-        }
-    }
-
-    val debug by addRecipeViewModel.debug.collectAsState()
-
-    debug?.let { debugMessage ->
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Firebase Debug",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = debugMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-
             }
         }
     }
@@ -625,24 +542,6 @@ fun AddRecipeScreen(
                             contentDescription = "Recipe image preview",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                }
-
-                // Show upload progress when uploading
-                if (uploadState is UploadState.Loading) {
-                    Column(modifier = Modifier.padding(top = 8.dp)) {
-                        Text(
-                            text = "Uploading image: $uploadProgress%",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        LinearProgressIndicator(
-                            progress = animatedProgress,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 4.dp),
-                            color = MaterialTheme.colorScheme.primary,
-                            trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     }
                 }
