@@ -20,6 +20,7 @@ import java.util.*
 
 class AddRecipeViewModel(private val context: Context) : ViewModel() {
     private val TAG = "AddRecipeViewModel"
+
     private val firebaseRecipeService = FirebaseRecipeService(context)
     private val firestoreService = FirebaseFirestoreService()
     private val storageService = FirebaseStorageService()
@@ -38,14 +39,6 @@ class AddRecipeViewModel(private val context: Context) : ViewModel() {
     
     fun resetSaveState() {
         _saveState.value = SaveState.Initial
-    }
-    
-    fun setSaving() {
-        _saveState.value = SaveState.Saving
-    }
-    
-    fun setError(message: String) {
-        _saveState.value = SaveState.Error(message)
     }
     
     /**
@@ -89,25 +82,6 @@ class AddRecipeViewModel(private val context: Context) : ViewModel() {
             }
         }
     }
-    
-    fun testStorageConnection() {
-        viewModelScope.launch {
-            _debug.value = "Testing Storage connection..."
-            FirebaseStorageUtil.testConnection()
-                .onSuccess {
-                    _debug.value = "Storage connection successful!"
-                }
-                .onFailure { error ->
-                    _debug.value = "Storage connection failed: ${error.message}"
-                }
-        }
-    }
-
-    fun cancelUpload() {
-        storageService.cancelUpload()
-        _uploadProgress.value = 0
-        _uploadState.value = UploadState.Idle
-    }
 }
 
 sealed class SaveState {
@@ -122,4 +96,4 @@ sealed class UploadState {
     object Loading : UploadState()
     data class Success(val imageUrl: String) : UploadState()
     data class Error(val message: String) : UploadState()
-} 
+}

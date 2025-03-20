@@ -6,7 +6,6 @@ import android.util.Log
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.models.Ingredient
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
@@ -15,14 +14,9 @@ import java.util.UUID
  */
 class FirebaseFirestoreService {
     private val TAG = "FirebaseFirestoreService"
-    
-    // Initialize Firestore - simple direct initialization, no lazy loading
+
     private val db = FirebaseFirestore.getInstance("tasty-bite")
-    
-    // Reference to recipes collection
     private val recipesCollection = db.collection("recipes")
-    
-    // Reference to Firebase Storage Service
     private val storageService = FirebaseStorageService()
 
     /**
@@ -100,8 +94,7 @@ class FirebaseFirestoreService {
                 "createdBy" to recipe.createdBy,
                 "createdAt" to System.currentTimeMillis()
             )
-            
-            // Save to Firestore
+
             recipesCollection.document(recipeId).set(recipeData).await()
             
             // Return the updated recipe with new ID and image URL
