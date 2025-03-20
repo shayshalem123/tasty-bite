@@ -21,7 +21,8 @@ import android.util.Log
 fun HomeScreen(
     modifier: Modifier = Modifier,
     onRecipeClick: (Recipe) -> Unit = {},
-    recipes: List<Recipe> = emptyList()
+    recipes: List<Recipe> = emptyList(),
+    userName: String = "User"
 ) {
     // Search state
     var searchQuery = remember { mutableStateOf("") }
@@ -75,7 +76,7 @@ fun HomeScreen(
             .padding(16.dp)
     ) {
         // Header
-        HomeHeader()
+        HomeHeader(name = userName)
         
         // Search Bar
         SearchBar(
