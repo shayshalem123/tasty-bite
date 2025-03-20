@@ -219,32 +219,6 @@ fun AddRecipeScreen(
         }
     }
 
-    val debug by addRecipeViewModel.debug.collectAsState()
-
-    debug?.let { debugMessage ->
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
-                Text(
-                    text = "Firebase Debug",
-                    style = MaterialTheme.typography.titleMedium
-                )
-                Text(
-                    text = debugMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-
-            }
-        }
-    }
-
     if (saveState is SaveState.Saving) {
         LinearProgressIndicator(
             modifier = Modifier.fillMaxWidth()

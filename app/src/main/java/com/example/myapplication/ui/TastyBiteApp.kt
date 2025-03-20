@@ -144,7 +144,7 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
             // Show add recipe screen
             isAddingRecipe -> {
                 val context = LocalContext.current
-                val addRecipeViewModel = remember(context) { AddRecipeViewModel(context) }
+                val addRecipeViewModel = remember(context) { AddRecipeViewModel() }
                 AddRecipeScreen(
                     onBackClick = { isAddingRecipe = false },
                     onRecipeAdded = { newRecipe -> 

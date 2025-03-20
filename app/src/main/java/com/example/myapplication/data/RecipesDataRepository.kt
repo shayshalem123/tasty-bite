@@ -16,11 +16,10 @@ class RecipesDataRepository {
 
     private val db = FirebaseFirestore.getInstance("tasty-bite")
     private val recipesCollection = db.collection("recipes")
-    private val storageService = RecipesImageRepository()
 
     suspend fun saveRecipe(
         recipe: Recipe, 
-        imageUri: Uri,
+        imagePath: String,
     ): Result<Recipe> {
         return try {
             Log.d(TAG, "Starting recipe save with image for: ${recipe.title}")
@@ -31,24 +30,6 @@ class RecipesDataRepository {
             } else {
                 recipe.id
             }
-            
-            // Step 1: Upload image (required)
-            Log.d(TAG, "Uploading image for recipe")
-            val imageUploadResult = storageService.uploadImage(
-                imageUri = imageUri,
-            )
-            
-            // Handle image upload result
-            val imageUrl = imageUploadResult.fold(
-                onSuccess = { url ->
-                    Log.d(TAG, "Image uploaded successfully: $url")
-                    url
-                },
-                onFailure = { error ->
-                    Log.e(TAG, "Failed to upload image", error)
-                    return Result.failure(error)
-                }
-            )
 
             val ingredientsData = recipe.ingredients?.map { ingredient ->
                 mapOf(
@@ -62,7 +43,7 @@ class RecipesDataRepository {
                 "id" to recipeId,
                 "title" to recipe.title,
                 "author" to recipe.author,
-                "imageUrl" to imageUrl,
+                "imageUrl" to imagePath,
                 "description" to (recipe.description ?: ""),
                 "cookingTime" to (recipe.cookingTime ?: ""),
                 "difficulty" to (recipe.difficulty ?: ""),
@@ -80,7 +61,7 @@ class RecipesDataRepository {
 
             recipesCollection.document(recipeId).set(recipeData).await()
 
-            val savedRecipe = recipe.copy(id = recipeId, imageUrl = imageUrl)
+            val savedRecipe = recipe.copy(id = recipeId, imageUrl = imagePath)
             Log.d(TAG, "Recipe saved successfully with ID: $recipeId")
             
             Result.success(savedRecipe)
