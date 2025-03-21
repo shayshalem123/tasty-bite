@@ -26,7 +26,6 @@ fun RecipeHeader(
     // Extract values for cleaner code
     val title = recipe.title
     val createdBy = recipe.createdBy
-    val rating = "4.5" // Hardcoded for now
     val cookingTime = recipe.cookingTime ?: "10 mins"
     val difficulty = recipe.difficulty ?: "Medium"
     val calories = recipe.calories ?: "512 cal"
@@ -47,24 +46,6 @@ fun RecipeHeader(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
-            
-            // Rating
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Star,
-                    contentDescription = "Rating",
-                    tint = Color(0xFFFFC107),  // Amber
-                    modifier = Modifier.size(24.dp)
-                )
-                Text(
-                    text = rating,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 4.dp)
-                )
-            }
         }
         
         // Creator display name
