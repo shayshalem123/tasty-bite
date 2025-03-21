@@ -13,10 +13,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.models.Category
@@ -29,8 +31,17 @@ import com.example.myapplication.models.Recipe
 import com.example.myapplication.data.categories
 import com.example.myapplication.auth.UserViewModel
 import android.util.Log
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.material3.Text
 import com.example.myapplication.auth.AuthViewModel
+import com.example.myapplication.ui.favorites.FavoritesViewModel
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import com.example.myapplication.ui.components.RecipeCard
 
 @Composable
 fun HomeScreen(
@@ -44,10 +55,24 @@ fun HomeScreen(
     onSignOutClick: () -> Unit = {},
     userViewModel: UserViewModel,
     authViewModel: AuthViewModel,
-    modifier: Modifier = Modifier
+    favoritesViewModel: FavoritesViewModel = FavoritesViewModel()
 ) {
-    // Get the current authenticated user from AuthViewModel
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Get current user
     val currentUser by authViewModel.currentUser.collectAsState()
+    val userEmail = currentUser?.email ?: ""
+    
+    // Favorites state
+    val favoriteRecipes by favoritesViewModel.favoriteRecipes.collectAsState()
+    val isLoadingFavorites by favoritesViewModel.isLoading.collectAsState()
+    
+    // Load favorites when the screen is shown
+    LaunchedEffect(userEmail) {
+        if (userEmail.isNotEmpty()) {
+            favoritesViewModel.loadFavorites(userEmail)
+        }
+    }
     
     // Get display name - use AuthViewModel's data which has the correct display name
     val displayName = currentUser?.displayName ?: "User"
@@ -75,7 +100,7 @@ fun HomeScreen(
     }
     
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize(),
         bottomBar = { 
             BottomNavigationBar(
                 onHomeClick = { /* Already on home */ },
@@ -155,6 +180,31 @@ fun HomeScreen(
                     userViewModel = userViewModel,
                     isLoading = isLoading
                 )
+            }
+            
+            // Add favorites section before or after recommended section
+            if (!isLoadingFavorites && favoriteRecipes.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Text(
+                    text = "Your Favorites",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                
+                // Use full horizontal list instead of RecommendationsSection to avoid title conflicts
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    contentPadding = PaddingValues(vertical = 16.dp)
+                ) {
+                    items(favoriteRecipes) { recipe ->
+                        RecipeCard(
+                            recipe = recipe,
+                            userViewModel = userViewModel,
+                            onClick = { onRecipeClick(recipe) }
+                        )
+                    }
+                }
             }
         }
     }

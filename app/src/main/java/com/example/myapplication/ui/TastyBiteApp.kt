@@ -32,12 +32,14 @@ import com.example.myapplication.ui.screens.profile.EditProfileScreen
 import com.example.myapplication.ui.screens.profile.ProfileScreen
 import com.example.myapplication.ui.screens.search.SearchScreen
 import kotlinx.coroutines.launch
+import com.example.myapplication.ui.favorites.FavoritesViewModel
 
 @Composable
 fun TastyBiteApp(
     authViewModel: AuthViewModel,
     userViewModel: UserViewModel,
-    addRecipeViewModel: AddRecipeViewModel
+    addRecipeViewModel: AddRecipeViewModel,
+    favoritesViewModel: FavoritesViewModel
 ) {
     // Check authentication state
     val authState by authViewModel.authState.collectAsState()
@@ -47,7 +49,12 @@ fun TastyBiteApp(
             LoadingScreen()
         }
         is AuthState.Authenticated -> {
-            AuthenticatedContent(authViewModel, userViewModel, addRecipeViewModel)
+            AuthenticatedContent(
+                authViewModel, 
+                userViewModel, 
+                addRecipeViewModel,
+                favoritesViewModel
+            )
         }
         is AuthState.Unauthenticated -> {
             AuthenticationScreen(authViewModel)
@@ -66,7 +73,8 @@ fun TastyBiteApp(
 fun AuthenticatedContent(
     authViewModel: AuthViewModel,
     userViewModel: UserViewModel,
-    addRecipeViewModel: AddRecipeViewModel
+    addRecipeViewModel: AddRecipeViewModel,
+    favoritesViewModel: FavoritesViewModel
 ) {
     // State to track the selected recipe
     var selectedRecipe by remember { mutableStateOf<Recipe?>(null) }
@@ -212,7 +220,8 @@ fun AuthenticatedContent(
 
                         // Clear the selected recipe
                         selectedRecipe = null
-                    }
+                    },
+                    favoritesViewModel = favoritesViewModel
                 )
             }
             isViewingAllRecipes -> {
@@ -275,7 +284,8 @@ fun AuthenticatedContent(
                         authViewModel.signOut()
                     },
                     userViewModel = userViewModel,
-                    authViewModel = authViewModel
+                    authViewModel = authViewModel,
+                    favoritesViewModel = favoritesViewModel
                 )
             }
         }
