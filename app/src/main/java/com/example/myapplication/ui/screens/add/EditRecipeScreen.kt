@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.models.Ingredient
 import com.example.myapplication.models.Recipe
+import com.example.myapplication.ui.screens.add.components.IngredientAmountField
 import kotlinx.coroutines.launch
 import java.util.*
 import androidx.lifecycle.ViewModel
@@ -49,12 +50,12 @@ fun EditRecipeScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Set the recipe to be edited in the ViewModel
     LaunchedEffect(recipe) {
         viewModel.setRecipe(recipe)
     }
-    
+
     // Form state
     var title by remember { mutableStateOf(recipe.title) }
     var description by remember { mutableStateOf(recipe.description ?: "") }
@@ -64,62 +65,102 @@ fun EditRecipeScreen(
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
     val ingredients = remember { mutableStateListOf<Ingredient>() }
     val instructions = remember { mutableStateListOf<String>() }
-    
+
+    // State for loading and errors
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Form validation state
+    var showErrors by remember { mutableStateOf(false) }
+    var titleError by remember { mutableStateOf<String?>(null) }
+    var servingsError by remember { mutableStateOf<String?>(null) }
+    var cookTimeError by remember { mutableStateOf<String?>(null) }
+    var instructionsError by remember { mutableStateOf<String?>(null) }
+    var ingredientsError by remember { mutableStateOf<String?>(null) }
+
     // Initialize lists
     LaunchedEffect(recipe) {
         // Clear existing data
         ingredients.clear()
         instructions.clear()
-        
+
         // Add recipe ingredients
         recipe.ingredients?.let { ingredients.addAll(it) }
-        
+
         // Add recipe instructions
         instructions.addAll(recipe.instructions)
     }
-    
+
     // Image picker
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            selectedImageUri = it
+            // Validate image
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(uri)
+
+            // Check file type
+            val isValidType = mimeType == "image/jpeg" || mimeType == "image/png"
+
+            // Check file size (limit to 2MB)
+            val fileSize = try {
+                contentResolver.openInputStream(uri)?.use { it.available() } ?: 0
+            } catch (e: Exception) {
+                -1
+            }
+            val isValidSize = fileSize in 1..2 * 1024 * 1024 // 2MB max
+
+            when {
+                !isValidType -> {
+                    errorMessage = "Invalid format. Please select a JPEG or PNG image."
+                }
+
+                !isValidSize -> {
+                    errorMessage = "Image is too large. Maximum size is 2MB."
+                }
+
+                else -> {
+                    selectedImageUri = it
+                }
+            }
         }
     }
-    
+
     // SaveState observer
     val saveState by viewModel.saveState.collectAsState()
-    var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    
+
     LaunchedEffect(saveState) {
         when (saveState) {
             is SaveState.Saving -> {
                 isLoading = true
                 errorMessage = null
             }
+
             is SaveState.Success -> {
                 isLoading = false
                 errorMessage = null
                 onRecipeUpdated(recipe)
             }
+
             is SaveState.Error -> {
                 isLoading = false
                 errorMessage = (saveState as SaveState.Error).message
             }
+
             else -> {
                 isLoading = false
             }
         }
     }
-    
+
     // Reset save state when leaving screen
     DisposableEffect(Unit) {
         onDispose {
             viewModel.resetSaveState()
         }
     }
-    
+
     // Error dialog
     if (errorMessage != null) {
         AlertDialog(
@@ -133,13 +174,13 @@ fun EditRecipeScreen(
             }
         )
     }
-    
+
     // Loading dialog
     if (isLoading) {
         AlertDialog(
             onDismissRequest = { },
             title = { Text("Updating Recipe") },
-            text = { 
+            text = {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -151,7 +192,52 @@ fun EditRecipeScreen(
             confirmButton = { }
         )
     }
-    
+
+    // Validate function
+    fun validateForm(): Boolean {
+        showErrors = true
+
+        // Validate title
+        titleError = when {
+            title.isBlank() -> "Title is required"
+            title.length < 3 -> "Title is too short"
+            else -> null
+        }
+
+        // Validate servings
+        servingsError = when {
+            servings.isBlank() -> "Servings is required"
+            servings.toIntOrNull() == null -> "Must be a number"
+            servings.toInt() <= 0 -> "Must be greater than 0"
+            else -> null
+        }
+
+        // Validate cook time
+        cookTimeError = when {
+            cookTime.isBlank() -> "Cook time is required"
+            cookTime.toIntOrNull() == null -> "Must be a number"
+            cookTime.toInt() <= 0 -> "Must be greater than 0"
+            else -> null
+        }
+
+        // Validate instructions
+        instructionsError = when {
+            instructions.isEmpty() -> "At least one instruction is required"
+            instructions.any { it.isBlank() } -> "Instructions cannot be empty"
+            else -> null
+        }
+
+        // Validate ingredients
+        ingredientsError = when {
+            ingredients.isEmpty() -> "At least one ingredient is required"
+            ingredients.any { it.name.isBlank() || it.amount.isBlank() } -> "Ingredients must have name and amount"
+            else -> null
+        }
+
+        return titleError == null && servingsError == null && cookTimeError == null
+                && instructionsError == null && ingredientsError == null
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -164,9 +250,9 @@ fun EditRecipeScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            if (validateForm(title, instructions)) {
+                            if (validateForm()) {
                                 val currentUser = authViewModel.currentUser.value
-                                
+
                                 if (currentUser != null) {
                                     val updatedRecipe = Recipe(
                                         id = recipe.id,
@@ -182,7 +268,7 @@ fun EditRecipeScreen(
                                         createdAt = recipe.createdAt,
                                         isFavorite = recipe.isFavorite
                                     )
-                                    
+
                                     viewModel.updateRecipe(
                                         recipe = updatedRecipe,
                                         imageUri = selectedImageUri,
@@ -194,7 +280,7 @@ fun EditRecipeScreen(
                                     errorMessage = "You must be logged in to update a recipe"
                                 }
                             } else {
-                                errorMessage = "Please fill in all required fields (title and at least one instruction)"
+                                errorMessage = "Please correct the errors in the form"
                             }
                         }
                     ) {
@@ -256,7 +342,7 @@ fun EditRecipeScreen(
                             Text("Tap to select an image")
                         }
                     }
-                    
+
                     // Show change overlay
                     if (selectedImageUri != null || recipe.imageUrl.isNotEmpty()) {
                         Box(
@@ -278,17 +364,23 @@ fun EditRecipeScreen(
                     }
                 }
             }
-            
+
             item {
                 // Title
                 TextField(
                     value = title,
                     onValueChange = { title = it },
                     label = { Text("Recipe Title") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = showErrors && titleError != null,
+                    supportingText = {
+                        if (showErrors && titleError != null) {
+                            Text(titleError!!, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
                 )
             }
-            
+
             item {
                 // Description
                 TextField(
@@ -301,7 +393,7 @@ fun EditRecipeScreen(
                     maxLines = 4
                 )
             }
-            
+
             item {
                 // Category
                 TextField(
@@ -311,7 +403,7 @@ fun EditRecipeScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            
+
             item {
                 // Cook time and servings
                 Row(
@@ -323,32 +415,58 @@ fun EditRecipeScreen(
                         onValueChange = { cookTime = it },
                         label = { Text("Cook Time (minutes)") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        isError = showErrors && cookTimeError != null,
+                        supportingText = {
+                            if (showErrors && cookTimeError != null) {
+                                Text(cookTimeError!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     )
-                    
+
                     TextField(
                         value = servings,
                         onValueChange = { servings = it },
                         label = { Text("Servings") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        isError = showErrors && servingsError != null,
+                        supportingText = {
+                            if (showErrors && servingsError != null) {
+                                Text(servingsError!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     )
                 }
             }
-            
+
             // Ingredients
             item {
-                Text(
-                    text = "Ingredients",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Ingredients",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                    )
+
+                    if (showErrors && ingredientsError != null) {
+                        Text(
+                            text = ingredientsError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
             }
-            
+
             // Ingredient items
             itemsIndexed(ingredients) { index, ingredient ->
-                IngredientItem(
+                EnhancedIngredientItem(
                     ingredient = ingredient,
                     onDelete = { ingredients.removeAt(index) },
                     onUpdate = { updatedIngredient ->
@@ -356,31 +474,40 @@ fun EditRecipeScreen(
                     }
                 )
             }
-            
+
             // Add ingredient button
             item {
-                OutlinedButton(
-                    onClick = {
-                        ingredients.add(Ingredient("", ""))
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Ingredient")
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Ingredient")
-                }
-            }
-            
-            // Instructions
-            item {
-                Text(
-                    text = "Instructions",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                AddIngredientSection(
+                    onAddIngredient = { newIngredient ->
+                        ingredients.add(newIngredient)
+                    }
                 )
             }
-            
+
+            // Instructions
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Instructions",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                    )
+
+                    if (showErrors && instructionsError != null) {
+                        Text(
+                            text = instructionsError!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
             // Instruction items
             itemsIndexed(instructions) { index, instruction ->
                 InstructionItem(
@@ -392,7 +519,7 @@ fun EditRecipeScreen(
                     }
                 )
             }
-            
+
             // Add instruction button
             item {
                 OutlinedButton(
@@ -406,7 +533,7 @@ fun EditRecipeScreen(
                     Text("Add Instruction")
                 }
             }
-            
+
             // Bottom spacing
             item {
                 Spacer(modifier = Modifier.height(80.dp))
@@ -417,48 +544,131 @@ fun EditRecipeScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun IngredientItem(
+private fun EnhancedIngredientItem(
     ingredient: Ingredient,
     onDelete: () -> Unit,
     onUpdate: (Ingredient) -> Unit
 ) {
     var name by remember { mutableStateOf(ingredient.name) }
-    var amount by remember { mutableStateOf(ingredient.amount) }
-    
-    // Update the ingredient whenever name or amount changes
-    LaunchedEffect(name, amount) {
-        onUpdate(Ingredient(name, amount, ingredient.imageUrl))
+    var amount by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("g") }
+
+    // Parse the amount and unit from the ingredient amount string
+    LaunchedEffect(ingredient) {
+        val parts = ingredient.amount.split(" ")
+        if (parts.isNotEmpty()) {
+            amount = parts[0]
+            if (parts.size > 1) {
+                unit = parts[1]
+            }
+        }
     }
-    
+
+    // Update the ingredient whenever name, amount, or unit changes
+    LaunchedEffect(name, amount, unit) {
+        if (amount.isNotBlank()) {
+            onUpdate(Ingredient(name, "$amount $unit", ingredient.imageUrl))
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically
         ) {
             TextField(
                 value = name,
                 onValueChange = { name = it },
                 label = { Text("Ingredient") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxWidth()
             )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IngredientAmountField(
+                    amount = amount,
+                    onAmountChange = { amount = it },
+                    selectedUnit = unit,
+                    onUnitChange = { unit = it },
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddIngredientSection(
+    onAddIngredient: (Ingredient) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf("") }
+    var unit by remember { mutableStateOf("g") }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Add New Ingredient",
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
             TextField(
-                value = amount,
-                onValueChange = { amount = it },
-                label = { Text("Amount") },
-                modifier = Modifier.weight(1f)
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Ingredient Name") },
+                modifier = Modifier.fillMaxWidth()
             )
-            
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete")
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            IngredientAmountField(
+                amount = amount,
+                onAmountChange = { amount = it },
+                selectedUnit = unit,
+                onUnitChange = { unit = it },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+                    if (name.isNotBlank() && amount.isNotBlank()) {
+                        onAddIngredient(Ingredient(name, "$amount $unit"))
+                        name = ""
+                        amount = ""
+                        // Keep the unit for convenience
+                    }
+                },
+                enabled = name.isNotBlank() && amount.isNotBlank(),
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Add Ingredient")
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Add")
             }
         }
     }
@@ -473,12 +683,12 @@ private fun InstructionItem(
     onUpdate: (String) -> Unit
 ) {
     var text by remember { mutableStateOf(instruction) }
-    
+
     // Update the instruction whenever text changes
     LaunchedEffect(text) {
         onUpdate(text)
     }
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -496,21 +706,17 @@ private fun InstructionItem(
                     .padding(top = 20.dp, end = 8.dp)
                     .width(24.dp)
             )
-            
+
             TextField(
                 value = text,
                 onValueChange = { text = it },
                 label = { Text("Step $index") },
                 modifier = Modifier.weight(1f)
             )
-            
+
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "Delete")
             }
         }
     }
-}
-
-private fun validateForm(title: String, instructions: List<String>): Boolean {
-    return title.isNotBlank() && instructions.isNotEmpty() && !instructions.any { it.isBlank() }
 } 
