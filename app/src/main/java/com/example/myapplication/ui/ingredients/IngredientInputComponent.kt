@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,10 +34,18 @@ import com.example.myapplication.data.model.IngredientResult
 @Composable
 fun IngredientInputComponent(
     viewModel: IngredientSearchViewModel,
-    onIngredientSelected: (IngredientResult) -> Unit
+    onIngredientSelected: (IngredientResult) -> Unit,
+    resetTrigger: Boolean = false
 ) {
     var query by remember { mutableStateOf("") }
     var showSuggestions by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(resetTrigger) {
+        if (resetTrigger) {
+            query = ""
+            showSuggestions = false
+        }
+    }
     
     val suggestions by viewModel.suggestions.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()

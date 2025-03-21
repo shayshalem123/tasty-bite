@@ -10,7 +10,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
 import com.example.myapplication.models.Ingredient
@@ -22,7 +21,6 @@ import com.example.myapplication.ui.ingredients.IngredientSearchViewModel
 fun IngredientsList(
     ingredients: List<Ingredient>,
     onIngredientsChanged: (List<Ingredient>) -> Unit,
-    apiKey: String = "YOUR_SPOONACULAR_API_KEY" // Replace with your actual API key
 ) {
     // Create ViewModel for ingredient search
     val viewModel = remember { IngredientSearchViewModel(SpoonacularApiService()) }
@@ -30,6 +28,7 @@ fun IngredientsList(
     // Local state for ingredient form
     var ingredientAmount by remember { mutableStateOf("") }
     var selectedUnit by remember { mutableStateOf("g") } // Default unit
+    var resetSearchField by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier.fillMaxWidth()
@@ -68,18 +67,10 @@ fun IngredientsList(
             IngredientInputComponent(
                 viewModel = viewModel,
                 onIngredientSelected = { ingredientResult ->
-                    // When an ingredient is selected from autocomplete, prompt for amount
-                    // Don't add it immediately - wait for amount to be entered
-                    
                     // Reset amount when new ingredient is selected
                     ingredientAmount = ""
-                    
-                    // You could store the selected ingredient in a state variable here
-                    // But for simplicity, we'll handle it directly on Add button click
-                    
-                    // Note: onIngredientSelected provides the selected ingredient
-                    // from Spoonacular API but doesn't add it to the list yet
-                }
+                },
+                resetTrigger = resetSearchField
             )
             
             // Amount and unit selection
@@ -107,10 +98,10 @@ fun IngredientsList(
                         )
                         onIngredientsChanged(ingredients + newIngredient)
                         
-                        // Clear form
+                        // Reset form
                         viewModel.clearSuggestions()
                         ingredientAmount = ""
-                        // Keep selected unit for convenience
+                        resetSearchField = !resetSearchField  // Toggle to trigger reset
                     }
                 },
                 enabled = viewModel.suggestions.value.isNotEmpty() && ingredientAmount.isNotBlank(),
