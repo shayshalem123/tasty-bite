@@ -25,6 +25,9 @@ import androidx.compose.runtime.getValue
 import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.data.RecipesDataRepository
 import kotlinx.coroutines.launch
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import com.example.myapplication.ui.favorites.FavoritesViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +37,8 @@ fun RecipeDetailScreen(
     userViewModel: UserViewModel,
     authViewModel: AuthViewModel,
     onEditRecipe: (Recipe) -> Unit,
-    onRecipeDeleted: () -> Unit
+    onRecipeDeleted: () -> Unit,
+    favoritesViewModel: FavoritesViewModel = FavoritesViewModel()
 ) {
     // Get creator display name from UserViewModel
     val creatorDisplayName by userViewModel.getUserDisplayName(recipe.createdBy).collectAsState()
@@ -58,6 +62,23 @@ fun RecipeDetailScreen(
     // Loading and error states
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Favorite state
+    val isFavorite by favoritesViewModel.isFavorite.collectAsState()
+    
+    // Check if recipe is a favorite with immediate update
+    LaunchedEffect(recipe.id) {
+        // Force check on each recipe ID change without debounce
+        favoritesViewModel.checkFavoriteStatus(currentUser?.email ?: "", recipe.id)
+    }
+
+    // Add this DisposableEffect to reset state when leaving the screen
+    DisposableEffect(Unit) {
+        onDispose {
+            // Reset favorite state when leaving the screen
+            favoritesViewModel.resetFavoriteState()
+        }
+    }
 
     // Delete confirmation dialog
     if (showDeleteDialog) {
@@ -140,14 +161,16 @@ fun RecipeDetailScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
         ) {
-            // Recipe Image with navigation and menu
+            // Recipe Image with navigation, menu, and favorite button
             Box {
                 RecipeImageHeaderWithMenu(
                     imageUrl = recipe.imageUrl,
                     title = recipe.title,
                     onBackClick = onBackClick,
                     isCreator = isCreator,
-                    onMoreClick = { showMenu = true }
+                    onMoreClick = { showMenu = true },
+                    isFavorite = isFavorite,
+                    onFavoriteClick = { favoritesViewModel.toggleFavorite(currentUser?.email ?: "", recipe.id) }
                 )
                 
                 // Show dropdown menu for edit/delete options
