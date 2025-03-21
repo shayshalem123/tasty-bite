@@ -61,7 +61,6 @@ class FirebaseRecipeService(private val context: Context? = null) {
             val recipeData = mapOf(
                 "id" to recipeId,
                 "title" to recipe.title,
-                "author" to recipe.author,
                 "imageUrl" to recipe.imageUrl.toString(),
                 "description" to (recipe.description ?: ""),
                 "cookingTime" to (recipe.cookingTime ?: ""),
@@ -103,7 +102,6 @@ class FirebaseRecipeService(private val context: Context? = null) {
                 {
                     "id": "${recipe.id}",
                     "title": "${recipe.title}",
-                    "author": "${recipe.author}",
                     "timestamp": ${System.currentTimeMillis()}
                 }
             """.trimIndent()

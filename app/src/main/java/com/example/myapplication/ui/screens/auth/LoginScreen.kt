@@ -16,14 +16,15 @@ import com.example.myapplication.auth.AuthViewModel
 @Composable
 fun LoginScreen(
     authViewModel: AuthViewModel,
-    onNavigateToRegister: () -> Unit
+    onNavigateToRegister: () -> Unit,
+    error: String? = null
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     val authState by authViewModel.authState.collectAsState()
     
-    val isError = authState is AuthState.Error
-    val errorMessage = if (authState is AuthState.Error) {
+    val isError = error != null || authState is AuthState.Error
+    val errorMessage = error ?: if (authState is AuthState.Error) {
         (authState as AuthState.Error).message
     } else ""
     

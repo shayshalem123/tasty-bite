@@ -14,11 +14,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.auth.AuthState
 import com.example.myapplication.auth.AuthViewModel
+import com.example.myapplication.auth.UserViewModel
 import com.example.myapplication.data.RecipesDataRepository
 import com.example.myapplication.data.RecipesImageRepository
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.BottomNavigationBar
+import com.example.myapplication.ui.components.LoadingScreen
 import com.example.myapplication.ui.screens.add.AddRecipeScreen
+import com.example.myapplication.ui.screens.auth.AuthenticationScreen
 import com.example.myapplication.ui.screens.auth.LoginScreen
 import com.example.myapplication.ui.screens.auth.RegisterScreen
 import com.example.myapplication.ui.screens.detail.RecipeDetailScreen
@@ -31,51 +34,38 @@ import com.example.myapplication.ui.screens.search.SearchScreen
 import kotlinx.coroutines.launch
 
 @Composable
-fun TastyBiteApp(authViewModel: AuthViewModel) {
-    // Get authState without collectAsState if it's causing issues
-    var authState by remember { mutableStateOf(authViewModel.authState.value) }
-    
-    // Update authState when it changes
-    LaunchedEffect(Unit) {
-        authViewModel.authState.collect { 
-            // This will update the authState
-            authState = it 
-        }
-    }
-    
-    // Authentication state management
-    var showLoginScreen by remember { mutableStateOf(true) }
+fun TastyBiteApp(
+    authViewModel: AuthViewModel,
+    userViewModel: UserViewModel
+) {
+    // Check authentication state
+    val authState by authViewModel.authState.collectAsState()
     
     when (authState) {
-        is AuthState.Initial, is AuthState.Loading -> {
-            // Show loading state or splash screen
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+        is AuthState.Initial -> {
+            LoadingScreen()
         }
         is AuthState.Authenticated -> {
-            // Show the main app content when authenticated
-            AuthenticatedContent(authViewModel)
+            AuthenticatedContent(authViewModel, userViewModel)
         }
-        is AuthState.Unauthenticated, is AuthState.Error -> {
-            // Show login or register screen
-            if (showLoginScreen) {
-                LoginScreen(
-                    authViewModel = authViewModel,
-                    onNavigateToRegister = { showLoginScreen = false }
-                )
-            } else {
-                RegisterScreen(
-                    authViewModel = authViewModel,
-                    onNavigateToLogin = { showLoginScreen = true }
-                )
-            }
+        is AuthState.Unauthenticated -> {
+            AuthenticationScreen(authViewModel)
+        }
+        is AuthState.Loading -> {
+            LoadingScreen()
+        }
+        is AuthState.Error -> {
+            val error = (authState as AuthState.Error).message
+            AuthenticationScreen(authViewModel, error)
         }
     }
 }
 
 @Composable
-fun AuthenticatedContent(authViewModel: AuthViewModel) {
+fun AuthenticatedContent(
+    authViewModel: AuthViewModel,
+    userViewModel: UserViewModel
+) {
     // State to track the selected recipe
     var selectedRecipe by remember { mutableStateOf<Recipe?>(null) }
     
@@ -160,29 +150,38 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
     
     Box(modifier = Modifier.fillMaxSize()) {
         when {
-            // Show profile edit screen
-            isEditingProfile -> {
-                EditProfileScreen(
-                    authViewModel = authViewModel,
-                    onBackClick = { isEditingProfile = false },
-                    onProfileUpdated = { 
-                        isEditingProfile = false
-                    }
+            selectedRecipe != null -> {
+                RecipeDetailScreen(
+                    recipe = selectedRecipe!!,
+                    onBackClick = { selectedRecipe = null },
+                    userViewModel = userViewModel
                 )
             }
-            // Show profile screen
-            isViewingProfile -> {
-                ProfileScreen(
+            isAddingRecipe -> {
+                val context = LocalContext.current
+                val addRecipeViewModel = remember(context) { AddRecipeViewModel() }
+                AddRecipeScreen(
+                    onBackClick = { isAddingRecipe = false },
+                    onRecipeAdded = { recipe ->
+                        allRecipes.add(0, recipe)
+                        isAddingRecipe = false
+                    },
                     authViewModel = authViewModel,
-                    onBackClick = { isViewingProfile = false },
-                    onEditProfileClick = { isEditingProfile = true },
+                    addRecipeViewModel = addRecipeViewModel
+                )
+            }
+            isViewingAllRecipes -> {
+                AllRecipesScreen(
+                    recipes = allRecipes,
+                    onBackClick = { isViewingAllRecipes = false },
                     onRecipeClick = { recipe ->
                         selectedRecipe = recipe
-                        isViewingProfile = false
-                    }
+                        isViewingAllRecipes = false
+                    },
+                    isLoading = isLoading.value,
+                    userViewModel = userViewModel
                 )
             }
-            // Show search screen
             isSearching -> {
                 SearchScreen(
                     recipes = allRecipes,
@@ -190,129 +189,49 @@ fun AuthenticatedContent(authViewModel: AuthViewModel) {
                     onRecipeClick = { recipe ->
                         selectedRecipe = recipe
                         isSearching = false
-                    }
-                )
-            }
-            // Show add recipe screen
-            isAddingRecipe -> {
-                val context = LocalContext.current
-                val addRecipeViewModel = remember(context) { AddRecipeViewModel() }
-                AddRecipeScreen(
-                    onBackClick = { isAddingRecipe = false },
-                    onRecipeAdded = { newRecipe -> 
-                        allRecipes.add(newRecipe)
-                        isAddingRecipe = false
                     },
-                    authViewModel = authViewModel,
-                    addRecipeViewModel = addRecipeViewModel
+                    userViewModel = userViewModel
                 )
             }
-            // Show recipe detail screen
-            selectedRecipe != null -> {
-                RecipeDetailScreen(
-                    recipe = selectedRecipe!!,
-                    onBackClick = { selectedRecipe = null }
-                )
-            }
-            // Show all recipes screen
-            isViewingAllRecipes -> {
-                AllRecipesScreen(
-                    recipes = allRecipes,
-                    onRecipeClick = { recipe -> 
-                        selectedRecipe = recipe
-                        isViewingAllRecipes = false
-                    },
-                    onBackClick = { isViewingAllRecipes = false }
-                )
-            }
-            // Show home screen
-            else -> {
-                Scaffold(
-                    bottomBar = { 
-                        BottomNavigationBar(
-                            onLogoutClick = { authViewModel.signOut() },
-                            onSearchClick = { isSearching = true },
-                            onHomeClick = { /* Already on home */ },
-                            onProfileClick = { isViewingProfile = true }
-                        ) 
-                    },
-                    floatingActionButton = {
-                        FloatingActionButton(
-                            onClick = { isAddingRecipe = true },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary,
-                            shape = CircleShape,
-                            elevation = FloatingActionButtonDefaults.elevation(
-                                defaultElevation = 4.dp,
-                                pressedElevation = 8.dp
-                            ),
-                            modifier = Modifier
-                                .size(56.dp)
-                                .offset(y = 40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Add Recipe",
-                                modifier = Modifier.size(24.dp)
-                            )
+            isViewingProfile -> {
+                if (isEditingProfile) {
+                    EditProfileScreen(
+                        authViewModel = authViewModel,
+                        onBackClick = { isEditingProfile = false },
+                        onProfileUpdated = {
+                            isEditingProfile = false
+                            userViewModel.clearCache()
                         }
-                    },
-                    floatingActionButtonPosition = FabPosition.Center
-                ) { paddingValues ->
-                    if (isLoading.value) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    } else if (errorMessage.value != null) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = errorMessage.value ?: "Unknown error",
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(16.dp)
-                                )
-                                Button(
-                                    onClick = {
-                                        // Reload recipes - using the scope defined above
-                                        coroutineScope.launch {
-                                            isLoading.value = true
-                                            errorMessage.value = null
-                                            firestoreService.getAllRecipes()
-                                                .onSuccess { recipes ->
-                                                    allRecipes.clear()
-                                                    allRecipes.addAll(recipes)
-                                                    isLoading.value = false
-                                                }
-                                                .onFailure { error ->
-                                                    errorMessage.value = "Failed to load recipes: ${error.message}"
-                                                    isLoading.value = false
-                                                }
-                                        }
-                                    }
-                                ) {
-                                    Text("Retry")
-                                }
-                            }
-                        }
-                    } else {
-                        HomeScreen(
-                            modifier = Modifier.padding(paddingValues),
-                            onRecipeClick = { recipe -> selectedRecipe = recipe },
-                            recipes = allRecipes,
-                            userName = currentUser?.displayName ?: "User",
-                            onSeeAllRecipesClick = { isViewingAllRecipes = true }
-                        )
-                    }
+                    )
+                } else {
+                    ProfileScreen(
+                        authViewModel = authViewModel,
+                        onBackClick = { isViewingProfile = false },
+                        onEditProfileClick = { isEditingProfile = true },
+                        onRecipeClick = { recipe ->
+                            selectedRecipe = recipe
+                            isViewingProfile = false
+                        },
+                        userViewModel = userViewModel
+                    )
                 }
+            }
+            else -> {
+                // Home screen with featured recipes, categories, etc.
+                HomeScreen(
+                    recipes = allRecipes,
+                    isLoading = isLoading.value,
+                    onRecipeClick = { recipe -> selectedRecipe = recipe },
+                    onViewAllRecipesClick = { isViewingAllRecipes = true },
+                    onAddRecipeClick = { isAddingRecipe = true },
+                    onSearchClick = { isSearching = true },
+                    onProfileClick = { isViewingProfile = true },
+                    onSignOutClick = {
+                        authViewModel.signOut()
+                    },
+                    userViewModel = userViewModel,
+                    authViewModel = authViewModel
+                )
             }
         }
         

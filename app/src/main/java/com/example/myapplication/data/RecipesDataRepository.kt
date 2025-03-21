@@ -42,7 +42,6 @@ class RecipesDataRepository {
             val recipeData = hashMapOf(
                 "id" to recipeId,
                 "title" to recipe.title,
-                "author" to recipe.author,
                 "imageUrl" to imagePath,
                 "description" to (recipe.description ?: ""),
                 "cookingTime" to (recipe.cookingTime ?: ""),
@@ -98,7 +97,6 @@ class RecipesDataRepository {
                         Recipe(
                             id = data["id"] as? String ?: doc.id,
                             title = data["title"] as? String ?: "",
-                            author = data["author"] as? String ?: "",
                             imageUrl = data["imageUrl"] as? String ?: "",
                             description = data["description"] as? String,
                             cookingTime = data["cookingTime"] as? String,
@@ -159,7 +157,6 @@ class RecipesDataRepository {
                         Recipe(
                             id = data["id"] as? String ?: doc.id,
                             title = data["title"] as? String ?: "",
-                            author = data["author"] as? String ?: "",
                             imageUrl = data["imageUrl"] as? String ?: "",
                             description = data["description"] as? String,
                             cookingTime = data["cookingTime"] as? String,

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -31,31 +33,28 @@ import androidx.compose.foundation.clickable
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.R
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.draw.clip
-import coil3.compose.AsyncImage
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.example.myapplication.auth.UserViewModel
 
 @Composable
 fun RecipeCard(
     recipe: Recipe,
+    userViewModel: UserViewModel,
     onClick: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier
             .width(200.dp)
-            .padding(vertical = 18.dp, horizontal = 4.dp)
-            .clickable { onClick() },
+            .height(240.dp)
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column (
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .padding(vertical = 8.dp, horizontal = 8.dp)
-        ) {
-            // Load image from URL using Coil
+        Column {
+            // Image
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(recipe.imageUrl)
@@ -65,19 +64,14 @@ fun RecipeCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    .clip(RoundedCornerShape(12.dp)),
+                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
                 contentScale = ContentScale.Crop,
                 loading = {
                     Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(8.dp)
-                        )
+                        CircularProgressIndicator()
                     }
                 },
                 error = {
@@ -94,6 +88,9 @@ fun RecipeCard(
                 }
             )
             
+            // Get display name from UserViewModel
+            val creatorDisplayName by userViewModel.getUserDisplayName(recipe.createdBy).collectAsState()
+            
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
@@ -105,7 +102,7 @@ fun RecipeCard(
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = recipe.author,
+                    text = creatorDisplayName,
                     fontSize = 16.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
@@ -115,18 +112,20 @@ fun RecipeCard(
 }
 
 @Composable
-fun SearchResultRecipeItem(recipe: Recipe) {
+fun RecipeCardCompact(
+    recipe: Recipe,
+    userViewModel: UserViewModel,
+    onClick: () -> Unit = {}
+) {
     Card(
         modifier = Modifier
-            .fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
+            .fillMaxWidth()
+            .height(100.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp)
-        ) {
-            // Load image from URL using Coil
+        Row {
+            // Image on left
             SubcomposeAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(recipe.imageUrl)
@@ -136,36 +135,33 @@ fun SearchResultRecipeItem(recipe: Recipe) {
                 modifier = Modifier
                     .width(100.dp)
                     .fillMaxHeight()
-                    .clip(RoundedCornerShape(8.dp)),
+                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)),
                 contentScale = ContentScale.Crop,
                 loading = {
                     Box(
-                        modifier = Modifier
-                            .width(100.dp)
-                            .fillMaxHeight(),
+                        modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(8.dp)
-                        )
+                        CircularProgressIndicator()
                     }
                 },
                 error = {
-                    // Fallback to placeholder image if URL fails to load
                     Image(
                         painter = painterResource(id = R.drawable.placeholder_image),
                         contentDescription = recipe.title,
                         modifier = Modifier
-                            .width(100.dp)
+                            .fillMaxWidth()
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(8.dp)),
+                            .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)),
                         contentScale = ContentScale.Crop
                     )
                 }
             )
             
-            // Recipe details
+            // Get display name from UserViewModel
+            val creatorDisplayName by userViewModel.getUserDisplayName(recipe.createdBy).collectAsState()
+            
+            // Text content on right
             Column(
                 modifier = Modifier
                     .fillMaxHeight()
@@ -178,7 +174,7 @@ fun SearchResultRecipeItem(recipe: Recipe) {
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = recipe.author,
+                    text = creatorDisplayName,
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )

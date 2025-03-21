@@ -81,7 +81,6 @@ fun AddRecipeScreen(
     val saveState by addRecipeViewModel.saveState.collectAsState()
 
     var title by remember { mutableStateOf("") }
-    var author by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var cookingTime by remember { mutableStateOf("") }
     var difficulty by remember { mutableStateOf("") }
@@ -97,7 +96,7 @@ fun AddRecipeScreen(
     var showErrorSnackbar by remember { mutableStateOf(false) }
 
     val isFormValid =
-        title.isNotBlank() && author.isNotBlank() && ingredients.isNotEmpty() && selectedImageUri != null
+        title.isNotBlank() && ingredients.isNotEmpty() && selectedImageUri != null
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -178,7 +177,6 @@ fun AddRecipeScreen(
             val newRecipe = Recipe(
                 id = "",  // This will be set by the service
                 title = title,
-                author = author,
                 imageUrl = "",  // This will be set by the service after upload
                 categories = selectedCategories,
                 description = description,
@@ -304,7 +302,6 @@ fun AddRecipeScreen(
                             text = buildString {
                                 append("Please fill in the following required fields:")
                                 if (title.isBlank()) append("\n• Recipe title")
-                                if (author.isBlank()) append("\n• Author name")
                                 if (ingredients.isEmpty()) append("\n• At least one ingredient")
                                 if (selectedImageUri == null) append("\n• Recipe image")
                             },
@@ -316,29 +313,19 @@ fun AddRecipeScreen(
             }
 
             // Basic Recipe Information
-            FormTextField(
+            OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
-                label = "Recipe Title *",
-                placeholder = "Enter recipe name",
+                label = { Text("Recipe Title") },
+                modifier = Modifier.fillMaxWidth(),
                 isError = showErrors && title.isBlank()
             )
 
-            FormTextField(
-                value = author,
-                onValueChange = { author = it },
-                label = "Author *",
-                placeholder = "Your name",
-                isError = showErrors && author.isBlank()
-            )
-
-            FormTextField(
+            OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = "Description",
-                placeholder = "Describe your recipe",
-                singleLine = false,
-                maxLines = 5
+                label = { Text("Description (Optional)") },
+                modifier = Modifier.fillMaxWidth()
             )
 
             // Recipe Details

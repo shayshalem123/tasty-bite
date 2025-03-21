@@ -12,12 +12,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.screens.detail.components.*
+import com.example.myapplication.auth.UserViewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 @Composable
 fun RecipeDetailScreen(
     recipe: Recipe,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    userViewModel: UserViewModel
 ) {
+    // Get creator display name from UserViewModel
+    val creatorDisplayName by userViewModel.getUserDisplayName(recipe.createdBy).collectAsState()
+    
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
@@ -45,23 +52,17 @@ fun RecipeDetailScreen(
                     .padding(16.dp)
             ) {
                 // Recipe header with title, author, rating, stats
-                RecipeHeader(recipe = recipe)
+                RecipeHeader(recipe = recipe, userViewModel = userViewModel)
                 
                 // Description
                 RecipeDescription(
                     description = recipe.description ?: 
-                        "A delicious recipe that's sure to please everyone at the table. Created by ${recipe.author}."
+                        "A delicious recipe that's sure to please everyone at the table. Created by $creatorDisplayName."
                 )
                 
                 // Ingredients
                 IngredientsList(
                     ingredients = recipe.ingredients ?: generateDefaultIngredients()
-                )
-                
-                // Watch Videos Button
-                ActionButton(
-                    text = "Watch Videos",
-                    onClick = { /* TODO: Open video player */ }
                 )
             }
         }

@@ -16,7 +16,8 @@ import com.example.myapplication.auth.AuthViewModel
 @Composable
 fun RegisterScreen(
     authViewModel: AuthViewModel,
-    onNavigateToLogin: () -> Unit
+    onNavigateToLogin: () -> Unit,
+    error: String? = null
 ) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
@@ -25,8 +26,9 @@ fun RegisterScreen(
     
     val authState by authViewModel.authState.collectAsState()
     
-    val isError = authState is AuthState.Error
-    var errorMessage = if (authState is AuthState.Error) {
+    // Use external error or auth state error
+    val isError = error != null || authState is AuthState.Error
+    var errorMessage = error ?: if (authState is AuthState.Error) {
         (authState as AuthState.Error).message
     } else ""
     
