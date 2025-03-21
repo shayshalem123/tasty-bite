@@ -31,8 +31,6 @@ import com.example.myapplication.ui.screens.home.AllRecipesScreen
 import com.example.myapplication.ui.screens.profile.EditProfileScreen
 import com.example.myapplication.ui.screens.profile.ProfileScreen
 import com.example.myapplication.ui.screens.search.SearchScreen
-import com.example.myapplication.ui.screens.add.EditRecipeScreen
-import com.example.myapplication.ui.screens.add.EditRecipeViewModel
 import kotlinx.coroutines.launch
 
 @Composable
@@ -159,31 +157,44 @@ fun AuthenticatedContent(
         when {
             isAddingRecipe -> {
                 AddRecipeScreen(
-                    onBackClick = { isAddingRecipe = false },
+                    onBackClick = { 
+                        isAddingRecipe = false 
+                        addRecipeViewModel.resetAllState()
+                    },
                     authViewModel = authViewModel,
-                    onRecipeAdded = { recipe -> isAddingRecipe = false; allRecipes.add(recipe) },
+                    onRecipeAdded = { recipe -> 
+                        isAddingRecipe = false 
+                        allRecipes.add(recipe)
+                        addRecipeViewModel.resetAllState()
+                    },
                     addRecipeViewModel = addRecipeViewModel
                 )
             }
             isEditingRecipe && selectedRecipe != null -> {
-                EditRecipeScreen(
-                    recipe = selectedRecipe!!,
-                    onBackClick = {
-                        isEditingRecipe = false
+                AddRecipeScreen(
+                    onBackClick = { 
+                        isEditingRecipe = false 
+                        addRecipeViewModel.resetAllState()
                     },
+                    authViewModel = authViewModel,
+                    onRecipeAdded = { }, // Not used in edit mode
                     onRecipeUpdated = { updatedRecipe ->
                         isEditingRecipe = false
-
+                        
                         // Update the recipe in the list
                         val index = allRecipes.indexOfFirst { it.id == updatedRecipe.id }
                         if (index >= 0) {
                             allRecipes[index] = updatedRecipe
                         }
-
+                        
                         // Update the selected recipe to reflect changes
                         selectedRecipe = updatedRecipe
+                        
+                        // Reset the ViewModel state
+                        addRecipeViewModel.resetAllState()
                     },
-                    authViewModel = authViewModel
+                    recipeToEdit = selectedRecipe,
+                    addRecipeViewModel = addRecipeViewModel
                 )
             }
             selectedRecipe != null -> {
