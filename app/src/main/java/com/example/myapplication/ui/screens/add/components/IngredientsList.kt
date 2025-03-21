@@ -10,16 +10,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.example.myapplication.R
 import com.example.myapplication.models.Ingredient
+import com.example.myapplication.data.api.SpoonacularApiService
+import com.example.myapplication.ui.ingredients.IngredientInputComponent
+import com.example.myapplication.ui.ingredients.IngredientSearchViewModel
 
 @Composable
 fun IngredientsList(
     ingredients: List<Ingredient>,
-    onIngredientsChanged: (List<Ingredient>) -> Unit
+    onIngredientsChanged: (List<Ingredient>) -> Unit,
+    apiKey: String = "YOUR_SPOONACULAR_API_KEY" // Replace with your actual API key
 ) {
-    var ingredientName by remember { mutableStateOf("") }
+    // Create ViewModel for ingredient search
+    val viewModel = remember { IngredientSearchViewModel(SpoonacularApiService()) }
+    
+    // Local state for ingredient form
     var ingredientAmount by remember { mutableStateOf("") }
     var selectedUnit by remember { mutableStateOf("g") } // Default unit
     
@@ -33,7 +41,6 @@ fun IngredientsList(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    // Set a minimum height to ensure ingredients are visible
                     .heightIn(min = 120.dp, max = 250.dp)
                     .padding(bottom = 8.dp)
             ) {
@@ -52,17 +59,27 @@ fun IngredientsList(
             Divider(modifier = Modifier.padding(vertical = 8.dp))
         }
         
-        // Form to add new ingredient
+        // Form to add new ingredient using Spoonacular API
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Ingredient name
-            OutlinedTextField(
-                value = ingredientName,
-                onValueChange = { ingredientName = it },
-                label = { Text("Ingredient") },
-                modifier = Modifier.fillMaxWidth()
+            // Ingredient search with API autocomplete
+            IngredientInputComponent(
+                viewModel = viewModel,
+                onIngredientSelected = { ingredientResult ->
+                    // When an ingredient is selected from autocomplete, prompt for amount
+                    // Don't add it immediately - wait for amount to be entered
+                    
+                    // Reset amount when new ingredient is selected
+                    ingredientAmount = ""
+                    
+                    // You could store the selected ingredient in a state variable here
+                    // But for simplicity, we'll handle it directly on Add button click
+                    
+                    // Note: onIngredientSelected provides the selected ingredient
+                    // from Spoonacular API but doesn't add it to the list yet
+                }
             )
             
             // Amount and unit selection
@@ -77,20 +94,26 @@ fun IngredientsList(
             // Add button
             Button(
                 onClick = {
-                    if (ingredientName.isNotBlank() && ingredientAmount.isNotBlank()) {
+                    val selectedIngredient = viewModel.suggestions.value.firstOrNull()
+                    
+                    if (selectedIngredient != null && ingredientAmount.isNotBlank()) {
                         val formattedAmount = "$ingredientAmount $selectedUnit"
                         val newIngredient = Ingredient(
-                            name = ingredientName,
+                            name = selectedIngredient.name,
                             amount = formattedAmount,
                             imageUrl = R.drawable.placeholder_image
+                            // You could use the Spoonacular image URL here if desired:
+                            // imageUrl = "https://spoonacular.com/cdn/ingredients_100x100/${selectedIngredient.image}"
                         )
                         onIngredientsChanged(ingredients + newIngredient)
-                        ingredientName = ""
+                        
+                        // Clear form
+                        viewModel.clearSuggestions()
                         ingredientAmount = ""
                         // Keep selected unit for convenience
                     }
                 },
-                enabled = ingredientName.isNotBlank() && ingredientAmount.isNotBlank(),
+                enabled = viewModel.suggestions.value.isNotEmpty() && ingredientAmount.isNotBlank(),
                 modifier = Modifier.align(Alignment.End)
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Ingredient")
