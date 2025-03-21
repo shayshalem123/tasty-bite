@@ -12,6 +12,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.auth.UserViewModel
 import com.example.myapplication.ui.TastyBiteApp
+import com.example.myapplication.ui.screens.add.AddRecipeViewModel
 import com.example.myapplication.ui.theme.TastyBiteTheme
 import com.google.firebase.FirebaseApp
 import com.google.firebase.ktx.Firebase
@@ -42,6 +43,8 @@ class MainActivity : ComponentActivity() {
         
         // Initialize User ViewModel
         val userViewModel = ViewModelProvider(this, UserViewModel.Factory())[UserViewModel::class.java]
+
+        val addRecipeViewModel = ViewModelProvider(this)[AddRecipeViewModel::class.java]
         
         setContent {
             TastyBiteTheme {
@@ -49,7 +52,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TastyBiteApp(authViewModel, userViewModel)
+                    TastyBiteApp(authViewModel, userViewModel, addRecipeViewModel)
                 }
             }
         }

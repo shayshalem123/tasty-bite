@@ -40,11 +40,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -68,55 +70,66 @@ import com.example.myapplication.ui.screens.add.components.FormTextField
 import com.example.myapplication.ui.screens.add.components.IngredientsList
 import com.example.myapplication.ui.screens.add.components.NumericFormField
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.DisposableEffect
+import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddRecipeScreen(
     onBackClick: () -> Unit,
     onRecipeAdded: (Recipe) -> Unit,
+    onRecipeUpdated: (Recipe) -> Unit = {},
+    recipeToEdit: Recipe? = null,
     authViewModel: AuthViewModel,
-    addRecipeViewModel: AddRecipeViewModel
+    addRecipeViewModel: AddRecipeViewModel = remember { AddRecipeViewModel() }
 ) {
-    val currentUser by authViewModel.currentUser.collectAsState()
-    val saveState by addRecipeViewModel.saveState.collectAsState()
-
-    var title by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var cookingTime by remember { mutableStateOf("") }
-    var difficulty by remember { mutableStateOf("") }
-    var calories by remember { mutableStateOf("") }
-    var selectedCategories by remember { mutableStateOf<List<String>>(emptyList()) }
-    var ingredients by remember { mutableStateOf<List<Ingredient>>(emptyList()) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Set the recipe to edit in the ViewModel
+    LaunchedEffect(recipeToEdit) {
+        addRecipeViewModel.setRecipeToEdit(recipeToEdit)
+    }
+    
+    val isEditMode by addRecipeViewModel.isEditMode.collectAsState()
+    val editingRecipe by addRecipeViewModel.recipe.collectAsState()
+    
+    // Form state with initial values from recipe if in edit mode
+    var title by remember(recipeToEdit) { mutableStateOf(recipeToEdit?.title ?: "") }
+    var description by remember(recipeToEdit) { mutableStateOf(recipeToEdit?.description ?: "") }
+    var category by remember(recipeToEdit) { mutableStateOf(recipeToEdit?.category ?: "") }
+    var servings by remember(recipeToEdit) { mutableStateOf(recipeToEdit?.servings?.toString() ?: "") }
+    var cookTime by remember(recipeToEdit) { mutableStateOf(recipeToEdit?.cookTime?.toString() ?: "") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-
-    var servingsCount by remember { mutableStateOf("4") }
-    var instructions by remember { mutableStateOf("") }
-
-    var showErrors by remember { mutableStateOf(false) }
-    var showErrorSnackbar by remember { mutableStateOf(false) }
-
-    val isFormValid =
-        title.isNotBlank() && ingredients.isNotEmpty() && selectedImageUri != null
-
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    val scope = rememberCoroutineScope()
-
-    LaunchedEffect(showErrorSnackbar) {
-        if (showErrorSnackbar) {
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    message = "Please fill in all required fields",
-                    actionLabel = "OK"
-                )
-            }
-            showErrorSnackbar = false
+    val ingredients = remember(recipeToEdit) {
+        mutableStateListOf<Ingredient>().apply {
+            recipeToEdit?.ingredients?.let { addAll(it) }
+        }
+    }
+    val instructions = remember(recipeToEdit) {
+        mutableStateListOf<String>().apply {
+            recipeToEdit?.instructions?.let { addAll(it) }
         }
     }
 
+    // Additional form fields with values from recipe if in edit mode
+    var cookingTime by remember(recipeToEdit) { mutableStateOf(recipeToEdit?.cookingTime?.replace(" mins", "") ?: "") }
+    var difficulty by remember(recipeToEdit) { mutableStateOf(recipeToEdit?.difficulty ?: "") }
+    var calories by remember(recipeToEdit) { mutableStateOf(recipeToEdit?.calories?.replace(" cal", "") ?: "") }
+    var selectedCategories by remember(recipeToEdit) { 
+        // Safely handle nullable categories from the recipe being edited
+        mutableStateOf(recipeToEdit?.categories?.filterNotNull() ?: emptyList()) 
+    }
+    var showErrors by remember { mutableStateOf(false) }
+    var showErrorSnackbar by remember { mutableStateOf(false) }
+
+    val isFormValid = title.isNotBlank() && ingredients.isNotEmpty() && 
+        (selectedImageUri != null || (isEditMode && recipeToEdit?.imageUrl?.isNotEmpty() == true))
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
     // Image selection state
     var imageErrorMessage by remember { mutableStateOf<String?>(null) }
-    val context = LocalContext.current
 
     // Image picker launcher
     val imagePicker = rememberLauncherForActivityResult(
@@ -167,57 +180,45 @@ fun AddRecipeScreen(
         }
     }
 
-    // Handle form submission
-    val onSubmit: Function0<Unit> = {
-        if (isFormValid) {
-            // Reset any previous errors
-            addRecipeViewModel.resetSaveState()
-            
-            // Create the recipe object
-            val newRecipe = Recipe(
-                id = "",  // This will be set by the service
-                title = title,
-                imageUrl = "",  // This will be set by the service after upload
-                categories = selectedCategories,
-                description = description,
-                cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else "",
-                difficulty = difficulty,
-                calories = if (calories.isNotBlank()) "${calories} cal" else "",
-                ingredients = ingredients,
-                instructions = if (instructions.isNotBlank()) {
-                    instructions.split("\n")
+    // SaveState observer
+    val saveState by addRecipeViewModel.saveState.collectAsState()
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(saveState) {
+        when (saveState) {
+            is SaveState.Saving -> {
+                isLoading = true
+                errorMessage = null
+            }
+            is SaveState.Success -> {
+                isLoading = false
+                errorMessage = null
+                // Different callbacks for add vs edit
+                if (isEditMode) {
+                    editingRecipe?.let { onRecipeUpdated(it) }
                 } else {
-                    listOf("No instructions provided")
-                },
-                cookTime = cookingTime.toIntOrNull() ?: 30,
-                servings = servingsCount.toIntOrNull() ?: 4,
-                category = if (selectedCategories.isNotEmpty()) selectedCategories.first() else "other",
-                createdBy = currentUser?.email ?: "anonymous"
-            )
-            
-            // Let the ViewModel handle the save operation, including image upload
-            addRecipeViewModel.saveRecipe(
-                recipe = newRecipe,
-                imageUri = selectedImageUri!!,  // Non-null assertion because isFormValid ensures it's not null
-                onSuccess = { savedRecipe ->
-                    // Handle successful save
-                    onRecipeAdded(savedRecipe)
-                    onBackClick()
+                    // This will be called after adding a new recipe
+                    addRecipeViewModel.recipe.value?.let { onRecipeAdded(it) }
                 }
-            )
-        } else {
-            // Show validation errors
-            showErrors = true
-            showErrorSnackbar = true
-            
-            // Reset save state if it's in loading state
-            if (saveState is SaveState.Saving) {
-                addRecipeViewModel.resetSaveState()
+            }
+            is SaveState.Error -> {
+                isLoading = false
+                errorMessage = (saveState as SaveState.Error).message
+            }
+            else -> {
+                isLoading = false
             }
         }
     }
 
-    if (saveState is SaveState.Saving) {
+    // Debug logging to diagnose category selection issues
+    LaunchedEffect(recipeToEdit) {
+        Log.d("AddRecipeScreen", "Recipe categories: ${recipeToEdit?.categories}")
+        Log.d("AddRecipeScreen", "Selected categories: $selectedCategories")
+    }
+
+    if (isLoading) {
         LinearProgressIndicator(
             modifier = Modifier.fillMaxWidth()
         )
@@ -226,7 +227,59 @@ fun AddRecipeScreen(
     // Add a retry button if error
     if (saveState is SaveState.Error) {
         Button(
-            onClick = onSubmit,
+            onClick = {
+                if (validateForm(title, instructions)) {
+                    val currentUser = authViewModel.currentUser.value
+                    
+                    if (currentUser != null) {
+                        val recipeData = Recipe(
+                            id = recipeToEdit?.id ?: "",
+                            title = title,
+                            imageUrl = recipeToEdit?.imageUrl ?: "",
+                            description = description.takeIf { it.isNotBlank() },
+                            ingredients = ingredients.toList(),
+                            instructions = instructions.toList(),
+                            cookTime = cookTime.toIntOrNull() ?: 0,
+                            servings = servings.toIntOrNull() ?: 0,
+                            category = category.ifBlank { 
+                                selectedCategories.firstOrNull() ?: "" 
+                            },
+                            cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else null,
+                            difficulty = difficulty.takeIf { it.isNotBlank() },
+                            calories = if (calories.isNotBlank()) "${calories} cal" else null,
+                            categories = selectedCategories.toList(),
+                            createdBy = recipeToEdit?.createdBy ?: currentUser.email,
+                            createdAt = recipeToEdit?.createdAt ?: System.currentTimeMillis(),
+                            isFavorite = recipeToEdit?.isFavorite ?: false
+                        )
+                        
+                        // Debug logging for the recipe's categories
+                        Log.d("AddRecipeScreen", "Saving recipe with categories: ${recipeData.categories}")
+                        
+                        if (isEditMode) {
+                            addRecipeViewModel.updateRecipe(
+                                recipe = recipeData,
+                                imageUri = selectedImageUri,
+                                onSuccess = { updatedRecipe ->
+                                    onRecipeUpdated(updatedRecipe)
+                                }
+                            )
+                        } else {
+                            addRecipeViewModel.saveRecipe(
+                                recipe = recipeData,
+                                imageUri = selectedImageUri,
+                                onSuccess = { savedRecipe ->
+                                    onRecipeAdded(savedRecipe)
+                                }
+                            )
+                        }
+                    } else {
+                        errorMessage = "You must be logged in to ${if (isEditMode) "update" else "add"} a recipe"
+                    }
+                } else {
+                    errorMessage = "Please fill in all required fields (title and at least one instruction)"
+                }
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 8.dp)
@@ -238,30 +291,69 @@ fun AddRecipeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add New Recipe") },
+                title = { Text(if (isEditMode) "Edit Recipe" else "Add Recipe") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    Button(
-                        onClick = onSubmit,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isFormValid) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (isFormValid) MaterialTheme.colorScheme.onPrimary
-                            else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    ) {
-                        if (saveState is SaveState.Saving && isFormValid) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
-                        } else {
-                            Text("Save")
+                    TextButton(
+                        onClick = {
+                            if (validateForm(title, instructions)) {
+                                val currentUser = authViewModel.currentUser.value
+                                
+                                if (currentUser != null) {
+                                    val recipeData = Recipe(
+                                        id = recipeToEdit?.id ?: "",
+                                        title = title,
+                                        imageUrl = recipeToEdit?.imageUrl ?: "",
+                                        description = description.takeIf { it.isNotBlank() },
+                                        ingredients = ingredients.toList(),
+                                        instructions = instructions.toList(),
+                                        cookTime = cookTime.toIntOrNull() ?: 0,
+                                        servings = servings.toIntOrNull() ?: 0,
+                                        category = category.ifBlank { 
+                                            selectedCategories.firstOrNull() ?: "" 
+                                        },
+                                        cookingTime = if (cookingTime.isNotBlank()) "${cookingTime} mins" else null,
+                                        difficulty = difficulty.takeIf { it.isNotBlank() },
+                                        calories = if (calories.isNotBlank()) "${calories} cal" else null,
+                                        categories = selectedCategories.toList(),
+                                        createdBy = recipeToEdit?.createdBy ?: currentUser.email,
+                                        createdAt = recipeToEdit?.createdAt ?: System.currentTimeMillis(),
+                                        isFavorite = recipeToEdit?.isFavorite ?: false
+                                    )
+                                    
+                                    // Debug logging for the recipe's categories
+                                    Log.d("AddRecipeScreen", "Saving recipe with categories: ${recipeData.categories}")
+                                    
+                                    if (isEditMode) {
+                                        addRecipeViewModel.updateRecipe(
+                                            recipe = recipeData,
+                                            imageUri = selectedImageUri,
+                                            onSuccess = { updatedRecipe ->
+                                                onRecipeUpdated(updatedRecipe)
+                                            }
+                                        )
+                                    } else {
+                                        addRecipeViewModel.saveRecipe(
+                                            recipe = recipeData,
+                                            imageUri = selectedImageUri,
+                                            onSuccess = { savedRecipe ->
+                                                onRecipeAdded(savedRecipe)
+                                            }
+                                        )
+                                    }
+                                } else {
+                                    errorMessage = "You must be logged in to ${if (isEditMode) "update" else "add"} a recipe"
+                                }
+                            } else {
+                                errorMessage = "Please fill in all required fields (title and at least one instruction)"
+                            }
                         }
+                    ) {
+                        Text(if (isEditMode) "Save" else "Add")
                     }
                 }
             )
@@ -389,7 +481,7 @@ fun AddRecipeScreen(
 
             // Category Selection
             Text(
-                text = "Categories",
+                text = "Categories (Select one or more)",
                 style = MaterialTheme.typography.titleMedium
             )
 
@@ -397,13 +489,32 @@ fun AddRecipeScreen(
                 categories = categories,
                 selectedCategoryIds = selectedCategories,
                 onCategorySelected = { categoryId ->
+                    Log.d("AddRecipeScreen", "Category $categoryId selected/deselected")
+                    Log.d("AddRecipeScreen", "Before change: $selectedCategories")
+                    
                     selectedCategories = if (selectedCategories.contains(categoryId)) {
-                        selectedCategories - categoryId
+                        selectedCategories.filter { it != categoryId }
                     } else {
                         selectedCategories + categoryId
                     }
+                    
+                    Log.d("AddRecipeScreen", "After change: $selectedCategories")
                 }
             )
+            
+            // Show selected categories summary
+            if (selectedCategories.isNotEmpty()) {
+                val selectedCategoryNames = selectedCategories.mapNotNull { categoryId ->
+                    categories.find { it.id == categoryId }?.name
+                }
+                
+                Text(
+                    text = "Selected: ${selectedCategoryNames.joinToString(", ")}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
 
             // Ingredients Section
             Row(
@@ -425,7 +536,10 @@ fun AddRecipeScreen(
 
             IngredientsList(
                 ingredients = ingredients,
-                onIngredientsChanged = { ingredients = it }
+                onIngredientsChanged = { newIngredients -> 
+                    ingredients.clear()
+                    ingredients.addAll(newIngredients)
+                }
             )
 
             // Required fields note
@@ -441,8 +555,12 @@ fun AddRecipeScreen(
 
             // Add instructions field
             FormTextField(
-                value = instructions,
-                onValueChange = { instructions = it },
+                value = instructions.joinToString(separator = "\n"),
+                onValueChange = { text ->
+                    val newInstructions = text.split("\n").filter { it.isNotBlank() }
+                    instructions.clear()
+                    instructions.addAll(newInstructions)
+                },
                 label = "Instructions (one step per line)",
                 placeholder = "Enter cooking instructions",
                 singleLine = false,
@@ -451,8 +569,8 @@ fun AddRecipeScreen(
 
             // Add servings field
             NumericFormField(
-                value = servingsCount,
-                onValueChange = { servingsCount = it },
+                value = servings,
+                onValueChange = { servings = it },
                 label = "Servings",
                 placeholder = "4",
                 suffix = "servings",
@@ -530,6 +648,30 @@ fun AddRecipeScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
+                } else if (isEditMode && recipeToEdit?.imageUrl?.isNotEmpty() == true) {
+                    // Show existing image when editing
+                    Box(
+                        modifier = Modifier
+                            .padding(top = 16.dp)
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = RoundedCornerShape(8.dp)
+                            )
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(context)
+                                .data(recipeToEdit?.imageUrl)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = "Recipe image preview",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
 
                 // Show error if upload failed
@@ -544,7 +686,7 @@ fun AddRecipeScreen(
             }
 
             // Error message
-            if (saveState is SaveState.Error) {
+            if (errorMessage != null) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
@@ -555,24 +697,28 @@ fun AddRecipeScreen(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "Error saving recipe",
+                            text = errorMessage ?: "",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = (saveState as SaveState.Error).message,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(top = 4.dp)
                         )
                     }
                 }
             }
-
-            // Remove the redundant LaunchedEffect since we're already handling navigation in the callback
-            if (saveState is SaveState.Success) {
-                // We now handle navigation in the saveRecipe callback above
-                // This ensures we navigate after the recipe has been properly added
-            }
         }
     }
-} 
+
+    // Reset ViewModel state when leaving screen
+    DisposableEffect(Unit) {
+        onDispose {
+            addRecipeViewModel.resetAllState()
+        }
+    }
+}
+
+// Helper functions
+private fun validateForm(title: String, instructions: List<String>): Boolean {
+    return title.isNotBlank() && instructions.isNotEmpty() && !instructions.any { it.isBlank() }
+}
+
+// ... existing helper functions ... 
+// ... existing helper functions ... 

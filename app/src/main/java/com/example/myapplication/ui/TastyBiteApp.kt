@@ -36,17 +36,18 @@ import kotlinx.coroutines.launch
 @Composable
 fun TastyBiteApp(
     authViewModel: AuthViewModel,
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    addRecipeViewModel: AddRecipeViewModel
 ) {
     // Check authentication state
     val authState by authViewModel.authState.collectAsState()
-    
+
     when (authState) {
         is AuthState.Initial -> {
             LoadingScreen()
         }
         is AuthState.Authenticated -> {
-            AuthenticatedContent(authViewModel, userViewModel)
+            AuthenticatedContent(authViewModel, userViewModel, addRecipeViewModel)
         }
         is AuthState.Unauthenticated -> {
             AuthenticationScreen(authViewModel)
@@ -64,53 +65,57 @@ fun TastyBiteApp(
 @Composable
 fun AuthenticatedContent(
     authViewModel: AuthViewModel,
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    addRecipeViewModel: AddRecipeViewModel
 ) {
     // State to track the selected recipe
     var selectedRecipe by remember { mutableStateOf<Recipe?>(null) }
-    
+
     // State to track if we're adding a new recipe
     var isAddingRecipe by remember { mutableStateOf(false) }
-    
+
+    // State to track if we're editing a recipe
+    var isEditingRecipe by remember { mutableStateOf(false) }
+
     // State to track if we're viewing all recipes
     var isViewingAllRecipes by remember { mutableStateOf(false) }
-    
+
     // State to track if we're searching recipes
     var isSearching by remember { mutableStateOf(false) }
-    
+
     // State to track if we're viewing profile
     var isViewingProfile by remember { mutableStateOf(false) }
-    
+
     // State to track if we're editing profile
     var isEditingProfile by remember { mutableStateOf(false) }
-    
+
     // Get the current user data
     val currentUser by authViewModel.currentUser.collectAsState()
-    
+
     // State to hold all recipes from Firestore
     val allRecipes = remember { mutableStateListOf<Recipe>() }
     val isLoading = remember { mutableStateOf(true) }
     val errorMessage = remember { mutableStateOf<String?>(null) }
-    
+
     // Create instance of Firestore service
     val firestoreService = remember { RecipesDataRepository() }
-    
+
     // Create instance of Firebase Storage service
     val storageService = remember { RecipesImageRepository() }
-    
+
     // Create a coroutine scope here - at the composable function level
     val coroutineScope = rememberCoroutineScope()
-    
+
     // Load recipes from Firestore when the screen is first shown
     LaunchedEffect(Unit) {
         try {
             isLoading.value = true
             errorMessage.value = null
-            
+
             firestoreService.getAllRecipes()
                 .onSuccess { recipes ->
                     allRecipes.clear()
-                    
+
                     // Process each recipe to ensure image URLs are resolved
                     recipes.forEach { recipe ->
                         // If imageUrl isn't a valid http/https URL, try to get the download URL from Firebase Storage
@@ -129,11 +134,11 @@ fun AuthenticatedContent(
                                     }
                             }
                         }
-                        
+
                         // Add the recipe to the list regardless of image URL resolution
                         allRecipes.add(recipe)
                     }
-                    
+
                     isLoading.value = false
                 }
                 .onFailure { error ->
@@ -147,27 +152,67 @@ fun AuthenticatedContent(
             isLoading.value = false
         }
     }
-    
+
     Box(modifier = Modifier.fillMaxSize()) {
         when {
+            isAddingRecipe -> {
+                AddRecipeScreen(
+                    onBackClick = { 
+                        isAddingRecipe = false 
+                        addRecipeViewModel.resetAllState()
+                    },
+                    authViewModel = authViewModel,
+                    onRecipeAdded = { recipe -> 
+                        isAddingRecipe = false 
+                        allRecipes.add(recipe)
+                        addRecipeViewModel.resetAllState()
+                    },
+                    addRecipeViewModel = addRecipeViewModel
+                )
+            }
+            isEditingRecipe && selectedRecipe != null -> {
+                AddRecipeScreen(
+                    onBackClick = { 
+                        isEditingRecipe = false 
+                        addRecipeViewModel.resetAllState()
+                    },
+                    authViewModel = authViewModel,
+                    onRecipeAdded = { }, // Not used in edit mode
+                    onRecipeUpdated = { updatedRecipe ->
+                        isEditingRecipe = false
+                        
+                        // Update the recipe in the list
+                        val index = allRecipes.indexOfFirst { it.id == updatedRecipe.id }
+                        if (index >= 0) {
+                            allRecipes[index] = updatedRecipe
+                        }
+                        
+                        // Update the selected recipe to reflect changes
+                        selectedRecipe = updatedRecipe
+                        
+                        // Reset the ViewModel state
+                        addRecipeViewModel.resetAllState()
+                    },
+                    recipeToEdit = selectedRecipe,
+                    addRecipeViewModel = addRecipeViewModel
+                )
+            }
             selectedRecipe != null -> {
                 RecipeDetailScreen(
                     recipe = selectedRecipe!!,
                     onBackClick = { selectedRecipe = null },
-                    userViewModel = userViewModel
-                )
-            }
-            isAddingRecipe -> {
-                val context = LocalContext.current
-                val addRecipeViewModel = remember(context) { AddRecipeViewModel() }
-                AddRecipeScreen(
-                    onBackClick = { isAddingRecipe = false },
-                    onRecipeAdded = { recipe ->
-                        allRecipes.add(0, recipe)
-                        isAddingRecipe = false
-                    },
+                    userViewModel = userViewModel,
                     authViewModel = authViewModel,
-                    addRecipeViewModel = addRecipeViewModel
+                    onEditRecipe = { recipe ->
+                        isEditingRecipe = true
+                    },
+                    onRecipeDeleted = {
+                        // Remove the recipe from the list
+                        allRecipes.removeAll { it.id == selectedRecipe!!.id }
+
+                        // Clear the selected recipe
+                        selectedRecipe = null
+                    }
                 )
             }
             isViewingAllRecipes -> {
@@ -234,14 +279,14 @@ fun AuthenticatedContent(
                 )
             }
         }
-        
+
         // Add a refresh action to reload recipes after adding a new one
         LaunchedEffect(isAddingRecipe) {
             if (!isAddingRecipe) {
                 firestoreService.getAllRecipes()
                     .onSuccess { recipes ->
                         allRecipes.clear()
-                        
+
                         // Process each recipe to ensure image URLs are resolved
                         recipes.forEach { recipe ->
                             // If imageUrl isn't a valid http/https URL, try to get the download URL from Firebase Storage
@@ -260,7 +305,7 @@ fun AuthenticatedContent(
                                         }
                                 }
                             }
-                            
+
                             // Add the recipe to the list regardless of image URL resolution
                             allRecipes.add(recipe)
                         }
@@ -268,4 +313,4 @@ fun AuthenticatedContent(
             }
         }
     }
-} 
+}

@@ -1,21 +1,34 @@
 package com.example.myapplication.ui.screens.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.example.myapplication.R
 import com.example.myapplication.auth.AuthViewModel
+import com.example.myapplication.auth.ProfileUpdateState
+import com.example.myapplication.ui.components.ProfileImage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.launch
@@ -29,13 +42,91 @@ fun EditProfileScreen(
     onProfileUpdated: () -> Unit
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
+    val profileUpdateState by authViewModel.profileUpdateState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     // State for form fields
     var displayName by remember { mutableStateOf(currentUser?.displayName ?: "") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Image picker
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            // Validate image
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(uri)
+
+            // Check file type
+            val isValidType = mimeType == "image/jpeg" || mimeType == "image/png"
+
+            // Check file size (limit to 2MB)
+            val fileSize = try {
+                contentResolver.openInputStream(uri)?.use { it.available() } ?: 0
+            } catch (e: Exception) {
+                -1
+            }
+            val isValidSize = fileSize in 1..2 * 1024 * 1024 // 2MB max
+
+            when {
+                !isValidType -> {
+                    errorMessage = "Invalid format. Please select a JPEG or PNG image."
+                }
+                !isValidSize -> {
+                    errorMessage = "Image is too large. Maximum size is 2MB."
+                }
+                else -> {
+                    selectedImageUri = it
+                    errorMessage = null
+                }
+            }
+        }
+    }
+    
+    // Update profile picture when selected
+    LaunchedEffect(selectedImageUri) {
+        if (selectedImageUri != null) {
+            authViewModel.updateProfilePicture(selectedImageUri!!)
+        }
+    }
+    
+    // Monitor profile update state
+    LaunchedEffect(profileUpdateState) {
+        when (profileUpdateState) {
+            is ProfileUpdateState.Loading -> {
+                isLoading = true
+                errorMessage = null
+            }
+            is ProfileUpdateState.Success -> {
+                isLoading = false
+                errorMessage = null
+                successMessage = "Profile picture updated successfully"
+                // Reset state
+                authViewModel.resetProfileUpdateState()
+            }
+            is ProfileUpdateState.Error -> {
+                isLoading = false
+                errorMessage = (profileUpdateState as ProfileUpdateState.Error).message
+                // Reset state
+                authViewModel.resetProfileUpdateState()
+            }
+            else -> {
+                // Do nothing
+            }
+        }
+    }
+    
+    // Reset state when screen closes
+    DisposableEffect(Unit) {
+        onDispose {
+            authViewModel.resetProfileUpdateState()
+        }
+    }
     
     Scaffold(
         topBar = {
@@ -91,7 +182,10 @@ fun EditProfileScreen(
                         },
                         enabled = !isLoading && displayName.isNotBlank()
                     ) {
-
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Save"
+                        )
                     }
                 }
             )
@@ -105,22 +199,49 @@ fun EditProfileScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Profile image
+            // Profile image with edit capability
             Box(
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                modifier = Modifier.padding(vertical = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = displayName.firstOrNull()?.uppercase() ?: "U",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.primary
+                // Profile image
+                ProfileImage(
+                    imageUrl = selectedImageUri?.toString() ?: currentUser?.profilePictureUrl,
+                    fallbackInitial = displayName.firstOrNull(),
+                    size = 120.dp,
+                    onClick = { imagePicker.launch("image/*") }
                 )
+                
+                // Edit icon overlay
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .offset(x = 0.dp, y = 0.dp)
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                        .clickable { imagePicker.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Change Profile Picture",
+                        tint = Color.White
+                    )
+                }
             }
             
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Add a text prompt for changing profile picture
+            Button(
+                onClick = { imagePicker.launch("image/*") },
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Text("Change Profile Picture")
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
             
             // Display name field
             OutlinedTextField(
