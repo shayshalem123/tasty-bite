@@ -48,7 +48,8 @@ class RecipesDataRepository {
                 "difficulty" to (recipe.difficulty ?: ""),
                 "calories" to (recipe.calories ?: ""),
                 "ingredients" to ingredientsData,
-                "categories" to (recipe.categories ?: if (recipe.category.isNotEmpty()) listOf(recipe.category) else listOf()),
+                "categories" to (recipe.categories?.takeIf { it.isNotEmpty() } ?: 
+                    if (recipe.category.isNotEmpty()) listOf(recipe.category) else listOf()),
                 "instructions" to recipe.instructions,
                 "cookTime" to recipe.cookTime,
                 "servings" to recipe.servings,
@@ -57,6 +58,9 @@ class RecipesDataRepository {
                 "createdBy" to recipe.createdBy,
                 "createdAt" to System.currentTimeMillis()
             )
+            
+            Log.d(TAG, "Storing recipe with categories: ${recipe.categories}, main category: ${recipe.category}")
+            Log.d(TAG, "Categories stored in Firestore: ${recipeData["categories"]}")
 
             recipesCollection.document(recipeId).set(recipeData).await()
 
@@ -93,6 +97,16 @@ class RecipesDataRepository {
                             Ingredient(name, amount, imageUrl)
                         } ?: listOf()
                         
+                        // Extract categories
+                        val categories = try {
+                            (data["categories"] as? List<*>)?.filterIsInstance<String>() ?: listOf()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing categories", e)
+                            listOf()
+                        }
+                        
+                        Log.d(TAG, "Retrieved categories for ${data["title"]}: $categories")
+                        
                         // Extract basic fields
                         Recipe(
                             id = data["id"] as? String ?: doc.id,
@@ -103,6 +117,7 @@ class RecipesDataRepository {
                             difficulty = data["difficulty"] as? String,
                             calories = data["calories"] as? String,
                             ingredients = ingredientsList,
+                            categories = categories,
                             instructions = (data["instructions"] as? List<*>)?.filterIsInstance<String>() ?: listOf(),
                             cookTime = (data["cookTime"] as? Number)?.toInt() ?: 0,
                             servings = (data["servings"] as? Number)?.toInt() ?: 0,
@@ -153,6 +168,16 @@ class RecipesDataRepository {
                             Ingredient(name, amount, imageUrl)
                         } ?: listOf()
                         
+                        // Extract categories
+                        val categories = try {
+                            (data["categories"] as? List<*>)?.filterIsInstance<String>() ?: listOf()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing categories", e)
+                            listOf()
+                        }
+                        
+                        Log.d(TAG, "Retrieved categories for ${data["title"]}: $categories")
+                        
                         // Extract basic fields
                         Recipe(
                             id = data["id"] as? String ?: doc.id,
@@ -163,6 +188,7 @@ class RecipesDataRepository {
                             difficulty = data["difficulty"] as? String,
                             calories = data["calories"] as? String,
                             ingredients = ingredientsList,
+                            categories = categories,
                             instructions = (data["instructions"] as? List<*>)?.filterIsInstance<String>() ?: listOf(),
                             cookTime = (data["cookTime"] as? Number)?.toInt() ?: 0,
                             servings = (data["servings"] as? Number)?.toInt() ?: 0,
@@ -187,6 +213,68 @@ class RecipesDataRepository {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch user recipes from Firestore", e)
             Result.success(emptyList())
+        }
+    }
+    
+    suspend fun deleteRecipe(recipeId: String): Result<Boolean> {
+        return try {
+            Log.d(TAG, "Deleting recipe with ID: $recipeId")
+            
+            // Delete the recipe document from Firestore
+            recipesCollection.document(recipeId).delete().await()
+            
+            Log.d(TAG, "Recipe deleted successfully with ID: $recipeId")
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to delete recipe from Firestore", e)
+            Result.failure(e)
+        }
+    }
+    
+    suspend fun updateRecipe(
+        recipe: Recipe,
+        newImagePath: String? = null
+    ): Result<Recipe> {
+        return try {
+            Log.d(TAG, "Updating recipe with ID: ${recipe.id}")
+            
+            val ingredientsData = recipe.ingredients?.map { ingredient ->
+                mapOf(
+                    "name" to ingredient.name,
+                    "amount" to ingredient.amount,
+                    "imageUrl" to (ingredient.imageUrl ?: 0).toString()
+                )
+            } ?: listOf()
+            
+            val recipeData = hashMapOf(
+                "id" to recipe.id,
+                "title" to recipe.title,
+                "imageUrl" to (newImagePath ?: recipe.imageUrl),
+                "description" to (recipe.description ?: ""),
+                "cookingTime" to (recipe.cookingTime ?: ""),
+                "difficulty" to (recipe.difficulty ?: ""),
+                "calories" to (recipe.calories ?: ""),
+                "ingredients" to ingredientsData,
+                "categories" to (recipe.categories ?: if (recipe.category.isNotEmpty()) listOf(recipe.category) else listOf()),
+                "instructions" to recipe.instructions,
+                "cookTime" to recipe.cookTime,
+                "servings" to recipe.servings,
+                "category" to recipe.category,
+                "isFavorite" to recipe.isFavorite,
+                "createdBy" to recipe.createdBy,
+                "createdAt" to recipe.createdAt
+            )
+            
+            // Update the recipe document in Firestore
+            recipesCollection.document(recipe.id).set(recipeData).await()
+            
+            val updatedRecipe = recipe.copy(imageUrl = newImagePath ?: recipe.imageUrl)
+            Log.d(TAG, "Recipe updated successfully with ID: ${recipe.id}")
+            
+            Result.success(updatedRecipe)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update recipe in Firestore", e)
+            Result.failure(e)
         }
     }
 } 

@@ -1,6 +1,7 @@
 package com.example.myapplication.ui.screens.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,12 +19,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
 import com.example.myapplication.auth.AuthViewModel
 import com.example.myapplication.auth.UserViewModel
 import com.example.myapplication.data.RecipesDataRepository
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.RecipeCard
 import com.example.myapplication.ui.components.RecipeCardCompact
+import com.example.myapplication.ui.components.ProfileImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,19 +103,11 @@ fun ProfileScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     // Profile image
-                    Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = currentUser?.displayName?.firstOrNull()?.uppercase() ?: "U",
-                            style = MaterialTheme.typography.headlineLarge,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    ProfileImage(
+                        imageUrl = currentUser?.profilePictureUrl,
+                        fallbackInitial = currentUser?.displayName?.firstOrNull(),
+                        size = 120.dp
+                    )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
