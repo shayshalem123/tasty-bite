@@ -32,6 +32,7 @@ fun HomeHeader(name: String = "User") {
         Column {
             Text(
                 text = "Hello, $name",
+                modifier = Modifier.padding(bottom = 4.dp),
                 fontSize = 16.sp,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
@@ -43,10 +44,11 @@ fun HomeHeader(name: String = "User") {
         }
         
         Image(
-            painter = painterResource(id = R.drawable.placeholder_image),
+            painter = painterResource(id = R.drawable.logo),
             contentDescription = "Profile",
             modifier = Modifier
-                .size(40.dp)
+                .size(64.dp)
+                .padding(end = 6.dp, top = 10.dp)
                 .clip(CircleShape)
         )
     }
