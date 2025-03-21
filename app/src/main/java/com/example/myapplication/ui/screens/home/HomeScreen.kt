@@ -42,6 +42,8 @@ import com.example.myapplication.ui.favorites.FavoritesViewModel
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import com.example.myapplication.ui.components.RecipeCard
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 @Composable
 fun HomeScreen(
@@ -136,7 +138,8 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
         ) {
             // Header with user name from Firebase Auth
             HomeHeader(name = displayName)
@@ -182,30 +185,21 @@ fun HomeScreen(
                 )
             }
             
-            // Add favorites section before or after recommended section
+            // Add favorites section using the RecommendationsSection component to maintain consistency
             if (!isLoadingFavorites && favoriteRecipes.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text(
-                    text = "Your Favorites",
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                RecommendationsSection(
+                    title = "Your Favorites",
+                    recipes = favoriteRecipes,
+                    onRecipeClick = onRecipeClick,
+                    userViewModel = userViewModel,
+                    isLoading = false
                 )
-                
-                // Use full horizontal list instead of RecommendationsSection to avoid title conflicts
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    contentPadding = PaddingValues(vertical = 16.dp)
-                ) {
-                    items(favoriteRecipes) { recipe ->
-                        RecipeCard(
-                            recipe = recipe,
-                            userViewModel = userViewModel,
-                            onClick = { onRecipeClick(recipe) }
-                        )
-                    }
-                }
             }
+            
+            // Add some space at the bottom for better scrolling
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 } 
