@@ -50,15 +50,3 @@ class AddRecipeViewModel() : ViewModel() {
         }
     }
 }
-
-sealed class SaveState {
-    object Initial : SaveState()
-    object Saving : SaveState()
-    object Success : SaveState()
-    data class Error(val message: String) : SaveState()
-}
-
-sealed class UploadState {
-    object Idle : UploadState()
-    data class Error(val message: String) : UploadState()
-}
