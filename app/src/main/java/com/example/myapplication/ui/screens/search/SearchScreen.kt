@@ -25,25 +25,35 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import com.example.myapplication.R
 import com.example.myapplication.data.categories
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.models.Ingredient
 import com.example.myapplication.ui.theme.TastyBiteGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.example.myapplication.auth.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     recipes: List<Recipe>,
     onBackClick: () -> Unit,
-    onRecipeClick: (Recipe) -> Unit
+    onRecipeClick: (Recipe) -> Unit,
+    userViewModel: UserViewModel
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -333,7 +343,8 @@ fun SearchScreen(
                         items(searchResults) { recipe ->
                             SearchResultItem(
                                 recipe = recipe,
-                                onClick = { onRecipeClick(recipe) }
+                                onClick = { onRecipeClick(recipe) },
+                                userViewModel = userViewModel
                             )
                         }
                     }
@@ -354,7 +365,8 @@ fun SearchScreen(
                     items(recipes) { recipe ->
                         SearchResultItem(
                             recipe = recipe,
-                            onClick = { onRecipeClick(recipe) }
+                            onClick = { onRecipeClick(recipe) },
+                            userViewModel = userViewModel
                         )
                     }
                 }
@@ -388,50 +400,71 @@ fun SuggestionChip(
 @Composable
 fun SearchResultItem(
     recipe: Recipe,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    userViewModel: UserViewModel
 ) {
+    // Get display name from UserViewModel
+    val creatorDisplayName by userViewModel.getUserDisplayName(recipe.createdBy).collectAsState()
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .height(100.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = null,
+        Row {
+            // Image
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(recipe.imageUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = recipe.title,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(40.dp)
-                    .padding(end = 12.dp),
-                tint = TastyBiteGreen
+                    .width(100.dp)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp))
             )
-
+            
+            // Text content
             Column(
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
                     text = recipe.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
-                Spacer(modifier = Modifier.height(4.dp))
+                
                 Text(
-                    text = recipe.ingredients?.take(2)?.joinToString(", ") { it.name } +
-                            if (recipe.ingredients != null && recipe.ingredients.size > 2) "..." else "",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "By $creatorDisplayName",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
-            }
-            
-            // Display difficulty badge
-            recipe.difficulty?.let { difficulty ->
-                DifficultyBadge(difficulty = difficulty)
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.placeholder_image),
+                        contentDescription = "Time",
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = recipe.cookingTime ?: "30 mins",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
     }

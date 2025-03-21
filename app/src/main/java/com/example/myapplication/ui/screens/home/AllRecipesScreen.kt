@@ -30,6 +30,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,13 +45,16 @@ import androidx.compose.ui.zIndex
 import com.example.myapplication.data.categories
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.RecipeCard
+import com.example.myapplication.auth.UserViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AllRecipesScreen(
     recipes: List<Recipe> = emptyList(),
     onRecipeClick: (Recipe) -> Unit = {},
-    onBackClick: () -> Unit = {}
+    onBackClick: () -> Unit = {},
+    isLoading: Boolean = false,
+    userViewModel: UserViewModel
 ) {
     Scaffold(
         topBar = {
@@ -103,7 +108,8 @@ fun AllRecipesScreen(
                 items(recipes) { recipe ->
                     RecipeListItem(
                         recipe = recipe,
-                        onClick = { onRecipeClick(recipe) }
+                        onClick = { onRecipeClick(recipe) },
+                        userViewModel = userViewModel
                     )
                 }
             }
@@ -114,8 +120,12 @@ fun AllRecipesScreen(
 @Composable
 fun RecipeListItem(
     recipe: Recipe,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    userViewModel: UserViewModel
 ) {
+    // Get display name from UserViewModel
+    val creatorDisplayName by userViewModel.getUserDisplayName(recipe.createdBy).collectAsState()
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -129,7 +139,7 @@ fun RecipeListItem(
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Recipe title and difficulty
+            // Recipe title and creator
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -144,7 +154,7 @@ fun RecipeListItem(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = "Difficulty: ${recipe.difficulty ?: "N/A"}",
+                    text = "By $creatorDisplayName",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )

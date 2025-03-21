@@ -19,9 +19,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.myapplication.auth.AuthViewModel
+import com.example.myapplication.auth.UserViewModel
 import com.example.myapplication.data.RecipesDataRepository
 import com.example.myapplication.models.Recipe
 import com.example.myapplication.ui.components.RecipeCard
+import com.example.myapplication.ui.components.RecipeCardCompact
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +31,8 @@ fun ProfileScreen(
     authViewModel: AuthViewModel,
     onBackClick: () -> Unit,
     onEditProfileClick: () -> Unit,
-    onRecipeClick: (Recipe) -> Unit
+    onRecipeClick: (Recipe) -> Unit,
+    userViewModel: UserViewModel
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
     val firestoreService = remember { RecipesDataRepository() }
@@ -199,10 +202,12 @@ fun ProfileScreen(
                 }
             } else {
                 items(userRecipes) { recipe ->
-                    RecipeCard(
+                    RecipeCardCompact(
                         recipe = recipe,
-                        onClick = { onRecipeClick(recipe) },
+                        userViewModel = userViewModel,
+                        onClick = { onRecipeClick(recipe) }
                     )
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
 

@@ -7,25 +7,32 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myapplication.auth.UserViewModel
 import com.example.myapplication.models.Recipe
 
 @Composable
 fun RecipeHeader(
-    recipe: Recipe
+    recipe: Recipe,
+    userViewModel: UserViewModel
 ) {
     // Extract values for cleaner code
     val title = recipe.title
-    val author = recipe.author
+    val createdBy = recipe.createdBy
     val rating = "4.5" // Hardcoded for now
     val cookingTime = recipe.cookingTime ?: "10 mins"
     val difficulty = recipe.difficulty ?: "Medium"
     val calories = recipe.calories ?: "512 cal"
+    
+    // Get display name from UserViewModel
+    val creatorDisplayName by userViewModel.getUserDisplayName(createdBy).collectAsState()
     
     Column(modifier = Modifier.fillMaxWidth()) {
         // Title and Rating
@@ -60,9 +67,9 @@ fun RecipeHeader(
             }
         }
         
-        // Author
+        // Creator display name
         Text(
-            text = "By $author",
+            text = "By $creatorDisplayName",
             fontSize = 14.sp,
             color = Color.Gray,
             modifier = Modifier.padding(vertical = 4.dp)
@@ -75,23 +82,21 @@ fun RecipeHeader(
                 .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            RecipeStat(
-                iconRes = com.example.myapplication.R.drawable.placeholder_image, // Replace with clock icon
-                label = cookingTime,
-                modifier = Modifier.weight(1f)
-            )
+            // Each stat is displayed as a column
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "Time", fontSize = 12.sp, color = Color.Gray)
+                Text(text = cookingTime, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
             
-            RecipeStat(
-                iconRes = com.example.myapplication.R.drawable.placeholder_image, // Replace with difficulty icon
-                label = difficulty,
-                modifier = Modifier.weight(1f)
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "Difficulty", fontSize = 12.sp, color = Color.Gray)
+                Text(text = difficulty, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
             
-            RecipeStat(
-                iconRes = com.example.myapplication.R.drawable.placeholder_image, // Replace with calorie icon
-                label = calories,
-                modifier = Modifier.weight(1f)
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "Calories", fontSize = 12.sp, color = Color.Gray)
+                Text(text = calories, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+            }
         }
     }
 }
