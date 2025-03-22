@@ -18,6 +18,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.ktx.Firebase
 import com.google.firebase.ktx.initialize
 import com.google.firebase.storage.FirebaseStorage
+import com.example.myapplication.ui.favorites.FavoritesViewModel
 
 class MainActivity : ComponentActivity() {
     private val TAG = "MainActivity"
@@ -45,14 +46,22 @@ class MainActivity : ComponentActivity() {
         val userViewModel = ViewModelProvider(this, UserViewModel.Factory())[UserViewModel::class.java]
 
         val addRecipeViewModel = ViewModelProvider(this)[AddRecipeViewModel::class.java]
-        
+
+        // Initialize Favorites ViewModel
+        val favoritesViewModel = ViewModelProvider(this)[FavoritesViewModel::class.java]
+
         setContent {
             TastyBiteTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TastyBiteApp(authViewModel, userViewModel, addRecipeViewModel)
+                    TastyBiteApp(
+                        authViewModel, 
+                        userViewModel, 
+                        addRecipeViewModel,
+                        favoritesViewModel
+                    )
                 }
             }
         }
