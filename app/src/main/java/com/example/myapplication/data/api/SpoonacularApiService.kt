@@ -21,7 +21,7 @@ class SpoonacularApiService(
         query: String, 
         number: Int = 10
     ): List<IngredientResult> = withContext(Dispatchers.IO) {
-        return@withContext mockIngredients()
+//        return@withContext mockIngredients()
 
         if (query.isEmpty()) {
             return@withContext emptyList()
