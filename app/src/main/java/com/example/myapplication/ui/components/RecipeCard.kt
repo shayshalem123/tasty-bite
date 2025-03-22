@@ -53,46 +53,53 @@ fun RecipeCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Column {
+        Column(
+            modifier = Modifier.padding(4.dp)
+        ) {
             // Image
-            SubcomposeAsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(recipe.imageUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = recipe.title,
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp)
-                    .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)),
-                contentScale = ContentScale.Crop,
-                loading = {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                },
-                error = {
-                    // Fallback to placeholder image if URL fails to load
-                    Image(
-                        painter = painterResource(id = R.drawable.placeholder_image),
-                        contentDescription = recipe.title,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp)
-                            .clip(RoundedCornerShape(12.dp)),
-                        contentScale = ContentScale.Crop
-                    )
+                    .padding(4.dp)
+            ) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(recipe.imageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = recipe.title,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(12.dp)),
+                    contentScale = ContentScale.Crop,
+                    loading = {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    },
+                    error = {
+                        // Fallback to placeholder image if URL fails to load
+                        Image(
+                            painter = painterResource(id = R.drawable.placeholder_image),
+                            contentDescription = recipe.title,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop
+                        )
+                    })
                 }
-            )
+            }
             
             // Get display name from UserViewModel
             val creatorDisplayName by userViewModel.getUserDisplayName(recipe.createdBy).collectAsState()
             
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
+                horizontalAlignment = Alignment.Start,
                 modifier = Modifier
                     .padding(12.dp)
             ) {
@@ -109,7 +116,7 @@ fun RecipeCard(
             }
         }
     }
-}
+
 
 @Composable
 fun RecipeCardCompact(
