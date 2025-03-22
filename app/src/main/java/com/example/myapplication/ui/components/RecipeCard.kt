@@ -178,11 +178,6 @@ fun RecipeCardCompact(
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
-                Text(
-                    text = "Delicious recipe",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary
-                )
             }
         }
     }
